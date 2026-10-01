@@ -41,3 +41,13 @@ variable "default_dotfiles_uri" {
   EOF
   default     = "git@github.com:{username}/dotfiles.git"
 }
+
+variable "lab_minio_image" {
+  type        = string
+  description = <<-EOF
+  MinIO server image for the lab_minio Tenant. MinIO no longer publishes the
+  community server, and the upstream default below can't be pulled anonymously
+  any more: point this at a copy in your own registry.
+  EOF
+  default     = "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z"
+}

@@ -43,9 +43,9 @@ resource "kubernetes_manifest" "lab_minio" {
       namespace = local.ns
     }
     spec = {
-      # The operator defaults to Docker Hub, which the Tenant registry
-      # allowlist rejects.
-      image           = "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z"
+      # Set explicitly: the operator would default to Docker Hub. See the
+      # lab_minio_image variable.
+      image           = var.lab_minio_image
       configuration   = { name = "lab-minio" }
       requestAutoCert = false
       buckets         = [{ name = "test" }]
