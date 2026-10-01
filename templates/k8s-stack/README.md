@@ -47,6 +47,14 @@ minute).
 Install tools with `sudo apt-get install`, or into your home directory. Changes
 outside `/home/coder` are lost when the workspace stops.
 
+## Dotfiles
+
+The **Dotfiles URL** setting is applied with `coder dotfiles` on every start, so changes to your
+dotfiles repository reach the workspace at its next start. It's pre-filled with your admin's
+default (out of the box, `git@github.com:<your Coder username>/dotfiles.git`). Change it, or
+clear it to skip dotfiles. An SSH URL uses your Coder SSH key (`coder publickey`), which must be
+added to your account on that forge; a public repository can use an `https://` URL instead.
+
 ## Git identity
 
 Set your name and email in your own git config, ideally in your dotfiles, so it's the same on every

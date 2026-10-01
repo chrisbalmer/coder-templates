@@ -153,7 +153,7 @@ module "dotfiles" {
   source               = "registry.coder.com/coder/dotfiles/coder"
   version              = "1.4.2"
   agent_id             = coder_agent.main.id
-  default_dotfiles_uri = "git@github.com:${data.coder_workspace_owner.me.name}/dotfiles.git"
+  default_dotfiles_uri = replace(var.default_dotfiles_uri, "{username}", data.coder_workspace_owner.me.name)
 }
 
 module "coder-login" {

@@ -31,3 +31,13 @@ variable "storage_class_options" {
   EOF
   default     = []
 }
+
+variable "default_dotfiles_uri" {
+  type        = string
+  description = <<-EOF
+  Pre-filled value of the Dotfiles URL parameter. {username} is replaced with
+  the workspace owner's Coder username. Users can change it per workspace.
+  Empty: no dotfiles unless the user sets a URL.
+  EOF
+  default     = "git@github.com:{username}/dotfiles.git"
+}

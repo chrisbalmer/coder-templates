@@ -57,6 +57,7 @@ The container drops `NET_RAW` and `MKNOD` (so there's no `ping`), and nothing is
 
 - **Coder 2.37 or later**: workspace presets, and the `coder` Terraform provider `~> 2.18`. The provisioner's Terraform must be **1.15 or later**.
 - **A provisioner with its own Kubernetes identity** (recommended): an external provisioner in its own namespace, running as a dedicated ServiceAccount, with coderd's own workspace permissions removed. External provisioners need Coder Premium. With the built-in provisioners, coderd's ServiceAccount needs everything below instead.
+- **Dotfiles default.** The template variable `default_dotfiles_uri` pre-fills the users' Dotfiles URL. `{username}` becomes the Coder username; the default is `git@github.com:{username}/dotfiles.git`, which assumes Coder usernames match GitHub usernames. Set your own pattern, or `""` for none, through `CODER_TEMPLATE_VARIABLES`.
 - **Registry icons.** The template uses icons Coder ships (`/icon/*`, `/emojis/*`).
 
 ### Provisioner permissions
