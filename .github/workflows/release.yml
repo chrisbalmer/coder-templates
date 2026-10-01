@@ -1,0 +1,212 @@
+# Lint every template on every PR and main push. A tag <template>-vX.Y.Z pushes
+# templates/<template> to coderd as version vX.Y.Z; one tag, one template.
+# Tags with -rc.N are pushed inactive (--activate=false) for testing, and
+# leave the template's metadata alone unless they create the template.
+# No --provisioner-tag: with none, Coder reuses the active version's tags.
+#
+# The release job needs a runner that can reach coderd, so it only runs where the
+# repository variable CODER_URL is set: typically a mirror on a self-hosted
+# Forgejo or Gitea, which run .github/workflows/ when there is no .forgejo/ or
+# .gitea/. On GitHub, with CODER_URL unset, tags are linted and nothing is pushed.
+#
+# Settings on the forge that releases:
+#   CODER_URL                  variable  https://coder.example.com
+#   CODER_SESSION_TOKEN        secret    a template-admin token
+#   CODER_TEMPLATE_VARIABLES   variable  optional YAML, keyed by template name, e.g.
+#                                        k8s-stack: {storage_class_options: [fast, slow]}
+#                              Coder doesn't keep template variable values between
+#                              pushes, so every push passes them. List and map values
+#                              are passed as JSON strings, which Terraform accepts.
+name: release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["*-v*"]
+
+env:
+  CHECKPOINT_DISABLE: "1"
+  # Match the provisioner (coder-provisioner 2.37.3 ships Terraform 1.15.5).
+  TF_VERSION: 1.15.5
+  TF_SHA256: 702b2136af6728c8ff037f843dd2dbce2b7ad88786b7381d1d72aefa250f601c
+  TFLINT_VERSION: v0.64.0
+  TFLINT_SHA256: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
+  # Icons are checked against this Coder version's bundled set when CODER_URL is unset.
+  CODER_VERSION: v2.37.3
+  YQ_VERSION: v4.53.6
+  YQ_SHA256: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install terraform, tflint and yq
+        run: |
+          set -euo pipefail
+          cd /tmp
+          curl -fsSL -o tf.zip "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+          echo "${TF_SHA256}  tf.zip" | sha256sum -c -
+          curl -fsSL -o tflint.zip "https://github.com/terraform-linters/tflint/releases/download/${TFLINT_VERSION}/tflint_linux_amd64.zip"
+          echo "${TFLINT_SHA256}  tflint.zip" | sha256sum -c -
+          curl -fsSL -o yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          echo "${YQ_SHA256}  yq" | sha256sum -c -
+          unzip -o -q tf.zip -d /usr/local/bin
+          unzip -o -q tflint.zip -d /usr/local/bin
+          install -m 0755 yq /usr/local/bin/yq
+          terraform version && tflint --version && yq --version
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      - name: terraform init and validate
+        run: |
+          set -euo pipefail
+          for d in templates/*/; do
+            echo "::group::$d"
+            (cd "$d" && terraform init -backend=false -input=false -lockfile=readonly && terraform validate)
+            echo "::endgroup::"
+          done
+
+      - name: tflint
+        # Bundled ruleset only, so --init downloads nothing.
+        run: |
+          set -euo pipefail
+          tflint --init --config "$PWD/.tflint.hcl"
+          for d in templates/*/; do tflint --config "$PWD/.tflint.hcl" --chdir "$d"; done
+
+      - name: template.yaml
+        run: |
+          set -euo pipefail
+          fail=0
+          for d in templates/*/; do
+            dir=$(basename "$d"); f="$d/template.yaml"
+            for k in name display_name icon description; do
+              [ -n "$(yq -r ".$k // \"\"" "$f")" ] || { echo "::error::$f: $k is empty"; fail=1; }
+            done
+            # The release tag names the directory, and the push uses .name,
+            # so the two must agree.
+            [ "$(yq -r .name "$f")" = "$dir" ] || { echo "::error::$f: name must be \"$dir\" (the directory name)"; fail=1; }
+            # Coder's UI still routes /templates/<template>/<page> without an
+            # organization, so a template named after a page can't be opened.
+            case "$dir" in docs|files|resources|versions|embed|insights|prebuilds|workspace|settings)
+              echo "::error::$f: \"$dir\" is a Coder template-page name; pick another"; fail=1 ;;
+            esac
+            len=$(yq -r .description "$f" | tr -d '\n' | wc -c)
+            [ "$len" -lt 128 ] || { echo "::error::$f: description is $len bytes; Coder requires < 128"; fail=1; }
+            [ -f "$d/README.md" ] || { echo "::error::$d: README.md missing (it's the template's Docs tab)"; fail=1; }
+            [ -f "$d/REQUIREMENTS.md" ] || { echo "::error::$d: REQUIREMENTS.md missing (what the cluster needs for this template)"; fail=1; }
+          done
+          exit "$fail"
+
+      - name: Icons exist in Coder
+        # Coder's bundled set has no React, MinIO or MySQL icon; a missing
+        # path renders as a blank square in the UI rather than failing. Checked
+        # on coderd when CODER_URL is set, else in Coder's source at CODER_VERSION
+        # (coderd serves site/static/ at /).
+        env:
+          # Not on pull requests: their paths would become requests to coderd.
+          CODER_URL: ${{ github.event_name != 'pull_request' && vars.CODER_URL || '' }}
+        run: |
+          set -euo pipefail
+          base="${CODER_URL:-https://raw.githubusercontent.com/coder/coder/${CODER_VERSION}/site/static}"
+          fail=0
+          for p in $(grep -rhoE '"/(icon|emojis)/[^"]+"' templates --include='*.tf' | tr -d '"' | sort -u) \
+                   $(yq -r .icon templates/*/template.yaml | sort -u); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${base}${p}")
+            [ "$code" = 200 ] || { echo "::error::icon $p returns $code from $base"; fail=1; }
+          done
+          exit "$fail"
+
+  release:
+    needs: lint
+    # Only where coderd is reachable; see the header.
+    if: startsWith(github.ref, 'refs/tags/') && vars.CODER_URL != ''
+    runs-on: ubuntu-latest
+    env:
+      CODER_URL: ${{ vars.CODER_URL }}
+      CODER_SESSION_TOKEN: ${{ secrets.CODER_SESSION_TOKEN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Parse tag
+        id: tag
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          re='^([a-z0-9][a-z0-9-]*)-(v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?)$'
+          [[ "$tag" =~ $re ]] || { echo "::error::tag $tag isn't <template>-vX.Y.Z[-rc.N]"; exit 1; }
+          template="${BASH_REMATCH[1]}"; version="${BASH_REMATCH[2]}"
+          [ -f "templates/$template/template.yaml" ] || { echo "::error::no templates/$template for tag $tag"; exit 1; }
+          echo "Template $template, version $version"
+          {
+            echo "template=$template"
+            echo "version=$version"
+            echo "dir=templates/$template"
+          } >> "$GITHUB_OUTPUT"
+
+      # From coderd itself, so the CLI always matches the server version.
+      - name: Install coder CLI and yq
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /usr/local/bin/coder "${CODER_URL}/bin/coder-linux-amd64"
+          chmod +x /usr/local/bin/coder
+          curl -fsSL -o /tmp/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
+          install -m 0755 /tmp/yq /usr/local/bin/yq
+          coder version
+
+      - name: Push template version
+        id: push
+        env:
+          NAME: ${{ steps.tag.outputs.template }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          DIR: ${{ steps.tag.outputs.dir }}
+          TEMPLATE_VARIABLES: ${{ vars.CODER_TEMPLATE_VARIABLES }}
+        run: |
+          set -euo pipefail
+          vars_args=()
+          if [ -n "${TEMPLATE_VARIABLES}" ]; then
+            # --variables-file takes string values only; lists and maps go as JSON.
+            printf '%s\n' "$TEMPLATE_VARIABLES" | NAME="$NAME" \
+              yq -o yaml '.[strenv(NAME)] // {} | (.[] | select(tag == "!!seq" or tag == "!!map")) |= to_json(0)' \
+              > /tmp/template-vars.yaml
+            if [ "$(yq 'length' /tmp/template-vars.yaml)" -gt 0 ]; then
+              echo "Template variables: $(yq -o json -I0 'keys' /tmp/template-vars.yaml)"
+              vars_args=(--variables-file /tmp/template-vars.yaml)
+            fi
+          fi
+          activate=true
+          case "$VERSION" in *-rc*) activate=false ;; esac
+          # Metadata applies to the whole template, not a version, so an
+          # inactive -rc push must not change it; except when this push
+          # creates the template, which would otherwise have none.
+          metadata=$activate
+          # A failed lookup fails the job rather than passing as "doesn't exist".
+          templates=$(curl -fsS -H "Coder-Session-Token: ${CODER_SESSION_TOKEN}" "${CODER_URL}/api/v2/templates")
+          exists=$(printf '%s' "$templates" | NAME="$NAME" yq -p json 'any_c(.name == strenv(NAME))')
+          [ "$exists" = true ] || metadata=true
+          echo "metadata=$metadata" >> "$GITHUB_OUTPUT"
+          echo "Pushing $NAME version $VERSION (activate=$activate)"
+          coder templates push "$NAME" \
+            --directory "$DIR" \
+            --name "$VERSION" \
+            --message "$(git log -1 --format=%s)" \
+            --activate="$activate" \
+            "${vars_args[@]}" \
+            --yes
+
+      - name: Apply template metadata
+        if: steps.push.outputs.metadata == 'true'
+        env:
+          DIR: ${{ steps.tag.outputs.dir }}
+        run: |
+          set -euo pipefail
+          f="$DIR/template.yaml"
+          coder templates edit "$(yq -r .name "$f")" \
+            --display-name "$(yq -r .display_name "$f")" \
+            --description "$(yq -r .description "$f")" \
+            --icon "$(yq -r .icon "$f")" \
+            --yes

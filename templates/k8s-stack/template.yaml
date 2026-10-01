@@ -1,0 +1,6 @@
+# Template metadata, applied by CI (coder templates edit) after every push.
+# Coder limits the description to under 128 bytes; CI checks it.
+name: k8s-stack
+display_name: Linux Stack on Kubernetes
+icon: /icon/k8s.png
+description: Headless Linux dev workspace on Kubernetes. Presets pick the toolchain and throwaway lab DBs. Not for desktop/GUI work.
