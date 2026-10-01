@@ -126,12 +126,15 @@ With the labs on, the operators pull:
 | Lab | Images |
 |---|---|
 | Postgres | `ghcr.io/cloudnative-pg/postgresql:18.4` |
-| MinIO | `quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z`, plus the operator's sidecar (`quay.io/minio/operator-sidecar`) |
+| MinIO | The template variable `lab_minio_image` (default `quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z`), plus the operator's sidecar (`quay.io/minio/operator-sidecar`) |
 | MySQL | `ghcr.io/cybozu-go/moco/mysql:8.4.10`, plus `ghcr.io/cybozu-go/moco-agent` |
 
 If you restrict registries per namespace (Capsule's `containerRegistries`, Kyverno and so on), allow **`ghcr.io`** and **`quay.io`**.
 
 The MinIO image is set explicitly because MinIO Operator 7.1 otherwise defaults to Docker Hub's `minio/minio`.
+
+> [!WARNING]
+> MinIO, Inc. no longer distributes the community server: `quay.io/minio/minio` and `docker.io/minio/minio` refuse anonymous pulls, so the default only works on nodes that already have it cached. Build or copy the image into a registry you control (the source is still on GitHub under AGPLv3), keep the same `RELEASE.*` tag, and set `lab_minio_image` to it, for example through `CODER_TEMPLATE_VARIABLES`. If you restrict registries per namespace, allow that registry too. The operator sidecar (`quay.io/minio/operator-sidecar`) is still pullable but may follow.
 
 ## 8. Lab operators (optional)
 
