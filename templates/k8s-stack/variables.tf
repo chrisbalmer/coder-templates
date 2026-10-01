@@ -51,3 +51,13 @@ variable "lab_minio_image" {
   EOF
   default     = "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z"
 }
+
+variable "ssh_known_hosts_extra" {
+  type        = string
+  description = <<-EOF
+  Extra SSH host keys, in known_hosts format (one per line), added to the
+  workspace's /etc/ssh/ssh_known_hosts after GitHub's. Use it for a self-hosted
+  forge that workspaces clone from over SSH, e.g. "git.example.com ssh-ed25519 AAAA...".
+  EOF
+  default     = ""
+}

@@ -114,6 +114,7 @@ Workspace pods need:
 | Kubernetes API server, port **6443 only** | `kubectl` and the lab startup script run as the workspace ServiceAccount. Allowing the API server's whole node exposes etcd and the node API; scope it to the API port. |
 | The internet (HTTPS at least) | Package installs, git, registries, AI APIs |
 | High UDP ports to private ranges | Optional: direct Coder connections (otherwise the relay is used) |
+| Your forge's SSH port | Optional: `git` over SSH to a self-hosted forge. Allow just that host and port, and add its host key with the template variable `ssh_known_hosts_extra` (GitHub's keys are built in) |
 
 Recommended denies: other namespaces (so one workspace can't reach another's databases), cluster services, and your LAN. The reference setup does this with a Cilium clusterwide policy selecting `coder.io/tenant=true` namespaces, plus the tenancy controller's same-namespace NetworkPolicy for traffic to the labs.
 
