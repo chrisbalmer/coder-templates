@@ -15,7 +15,8 @@ It has no graphical desktop.
 
 Every image has git, Python and uv, kubectl, sudo, the lab clients (`psql`,
 `mysql`, and the MinIO client `mc`), and the GitHub, Gitea and Forgejo CLIs
-(`gh`, `tea`, `fj`), plus `nc` for network checks. The image can't be changed after the workspace
+(`gh`, `tea`, `fj`), the Gitea/Forgejo MCP server `gitea-mcp` (installed, not configured), plus `nc`
+for network checks. The image can't be changed after the workspace
 is created. CPU, memory, disk size, the repo and the lab toggles can.
 
 ## Lab services
