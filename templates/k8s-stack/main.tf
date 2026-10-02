@@ -6,11 +6,11 @@ locals {
   # Exact pins, bumped by template release. Built by coder-images
   # (github.com/chrisbalmer/coder-images).
   images = {
-    base   = "${var.image_registry}/coder-images-base:2.2.0"
-    cortex = "${var.image_registry}/coder-images-cortex:2.2.0"
-    infra  = "${var.image_registry}/coder-images-infra:2.2.0"
-    golang = "${var.image_registry}/coder-images-golang:2.3.0"
-    app    = "${var.image_registry}/coder-images-app:2.2.0"
+    base   = "${var.image_registry}/coder-images-base:2.3.0"
+    cortex = "${var.image_registry}/coder-images-cortex:2.3.0"
+    infra  = "${var.image_registry}/coder-images-infra:2.3.0"
+    golang = "${var.image_registry}/coder-images-golang:2.4.0"
+    app    = "${var.image_registry}/coder-images-app:2.3.0"
   }
 
   start = data.coder_workspace.me.start_count
