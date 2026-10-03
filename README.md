@@ -59,8 +59,9 @@ from your deployment, so it always matches the server.
 1. Merge the change to `main`. CI lints **every** template: `terraform fmt`, `validate`,
    `tflint`, the `template.yaml` checks, and that every icon path exists in Coder (on your
    deployment when `CODER_URL` is set, otherwise in Coder's source at `CODER_VERSION`).
-2. Tag a release candidate:
-   `git tag k8s-stack-v2.1.0-rc.1 && git push forge k8s-stack-v2.1.0-rc.1`.
+2. Tag a release candidate with an **annotated** tag, whose message is what users see in Coder's
+   "Update workspace?" dialog (a lightweight tag falls back to the commit subject):
+   `git tag -a k8s-stack-v2.1.0-rc.1 -m "Adds the Gitea MCP server" && git push forge k8s-stack-v2.1.0-rc.1`.
    CI pushes `templates/k8s-stack` as an **inactive** version `v2.1.0-rc.1`.
 3. Test it by creating a workspace on that version (or promote it), then tag the release
    (`k8s-stack-v2.1.0`). CI pushes it, activates it, and applies the metadata from
