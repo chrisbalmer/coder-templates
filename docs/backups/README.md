@@ -38,9 +38,11 @@ workspaces:
 - **A deleted workspace keeps no local restore points.** Its snapshots go with
   the namespace and the volume. Only the exports remain, listed under the old
   namespace name.
-- **Retention may not retire a deleted workspace's exports.** Check how your K10
-  version behaves. If they pile up, delete their RestorePointContents (see
-  [Cleaning up](#cleaning-up)).
+- **Retention never retires a deleted workspace's restore points.** K10
+  retention is count-based: each policy run pushes the oldest restore point out
+  of its tier. A deleted workspace gets no more runs, so its points stay in the
+  catalog and in object storage until something deletes them. The sweep job in
+  [Cleaning up](#cleaning-up) does, after a grace period.
 
 ## Restoring
 
@@ -138,17 +140,27 @@ Delete the scratch namespace when you're done.
 
 ## Cleaning up
 
-To list restore points whose namespace no longer exists:
+[`kasten-k10/sweep/`](kasten-k10/sweep/) is a nightly CronJob that retires the
+restore points of deleted workspaces once they are older than a grace period
+(30 days in the example). That grace period is your window for restoring a
+deleted workspace. It runs
+[`k10-sweep-removed-apps.py`](kasten-k10/sweep/k10-sweep-removed-apps.py), which:
+
+- finds restore points of the policy whose namespace no longer exists;
+- refuses to act if the namespace list doesn't include K10's own namespace,
+  since an empty or truncated list would make every workspace look deleted;
+- deletes their **RestorePointContents**, not the namespaced RestorePoints.
+  Deleting the content starts a K10 RetireAction, which also removes the exported
+  data from object storage; deleting a RestorePoint alone doesn't.
+
+Its RBAC is limited to listing namespaces, and listing and deleting
+RestorePointContents. Set the policy name and grace period in `cronjob.yaml`,
+then `kubectl apply -k docs/backups/kasten-k10/sweep`. The script also runs by
+hand from a workstation, as a dry run unless you pass `--delete`:
 
 ```bash
-kubectl get restorepointcontents.apps.kio.kasten.io \
-  -l k10.kasten.io/policyName=coder-workspace-homes \
-  -o custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.labels.k10\\.kasten\\.io/appNamespace,CREATED:.metadata.creationTimestamp
+docs/backups/kasten-k10/sweep/k10-sweep-removed-apps.py --policy coder-workspace-homes --min-age-days 0
 ```
 
-Delete the RestorePointContent, not the namespaced RestorePoint. Deleting the
-content starts a K10 RetireAction, which also removes the exported data from
-object storage. Deleting a RestorePoint alone doesn't.
-
 Restore points from a manual run of the policy are never retired by its
-retention. Set `spec.expiresAt` on the RunAction so they expire.
+retention either. Set `spec.expiresAt` on the RunAction so they expire.
