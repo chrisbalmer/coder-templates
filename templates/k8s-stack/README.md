@@ -44,6 +44,9 @@ minute).
   are kept. The container and the lab services are removed. MinIO is the one
   exception: its data volume is kept and reused on the next start.
 - **Delete:** everything goes, including the home directory.
+- **Backups:** the template does not back anything up. Your home directory is
+  protected only if your administrator backs up the `home` volume; lab data is
+  scratch and is not meant to be kept. Push work you care about.
 
 Install tools with `sudo apt-get install`, or into your home directory. Changes
 outside `/home/coder` are lost when the workspace stops.
