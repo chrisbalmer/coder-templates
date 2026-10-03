@@ -25,6 +25,9 @@ uid 1000, seccomp `RuntimeDefault`, and `NET_RAW`/`MKNOD` dropped. Sudo works: w
 namespaces enforce Pod Security `baseline`, not `restricted`. What a cluster needs for it is in
 [`templates/k8s-stack/REQUIREMENTS.md`](templates/k8s-stack/REQUIREMENTS.md).
 
+Backing up workspace homes, with example Kasten K10 policies and a restore procedure, is covered in
+[`docs/backups/`](docs/backups/README.md).
+
 ### Template names
 
 Don't name a template after a sub-page of Coder's template UI: `docs`,

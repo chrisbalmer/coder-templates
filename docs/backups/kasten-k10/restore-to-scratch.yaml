@@ -1,0 +1,27 @@
+# Restore a workspace's `home` into a scratch namespace, never straight into the
+# workspace namespace (see ../README.md). Fill in the placeholders, then:
+#   kubectl create -f restore-to-scratch.yaml
+apiVersion: actions.kio.kasten.io/v1alpha1
+kind: RestoreAction
+metadata:
+  generateName: restore-home-
+  # K10 requires the action to live in its targetNamespace.
+  namespace: workspace-restore
+spec:
+  subject:
+    apiVersion: apps.kio.kasten.io/v1alpha1
+    kind: RestorePoint
+    name: <restore-point>
+    namespace: <workspace-namespace>
+  targetNamespace: workspace-restore
+  # Only for an exported restore point (label
+  # k10.kasten.io/exportType=portableAppData). Remove for a local one.
+  profile:
+    name: <location-profile>
+    namespace: kasten-io
+  # No overwriteExisting: it deletes the existing PVC before restoring.
+  filters:
+    includeResources:
+      - group: ""
+        resource: persistentvolumeclaims
+        name: home
