@@ -165,8 +165,19 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
           DIR: ${{ steps.tag.outputs.dir }}
           TEMPLATE_VARIABLES: ${{ vars.CODER_TEMPLATE_VARIABLES }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          # Version message, which Coder shows in its "Update workspace?" dialog: an
+          # annotated tag's message, else the tagged commit's subject. actions/checkout
+          # fetches the commit but not the tag object, so fetch the tag itself first.
+          git fetch --quiet --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          if [ "$(git cat-file -t "refs/tags/${TAG}")" = tag ]; then
+            message=$(git tag -l --format='%(contents)' "$TAG" | sed '/^-----BEGIN /,$d')
+          else
+            message=$(git log -1 --format=%s)
+          fi
+          echo "Version message: ${message%%$'\n'*}"
           vars_args=()
           if [ -n "${TEMPLATE_VARIABLES}" ]; then
             # --variables-file takes string values only; lists and maps go as JSON.
@@ -193,7 +204,7 @@ jobs:
           coder templates push "$NAME" \
             --directory "$DIR" \
             --name "$VERSION" \
-            --message "$(git log -1 --format=%s)" \
+            --message "$message" \
             --activate="$activate" \
             "${vars_args[@]}" \
             --yes
