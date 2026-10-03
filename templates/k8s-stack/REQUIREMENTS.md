@@ -23,6 +23,7 @@ namespaces **safely**. It needs rights that are powerful when left unscoped.
 | 7 | Egress from workspace namespaces to the Coder URL, the Kubernetes API and the internet | Yes |
 | 8 | CloudNativePG, MinIO Operator, MOCO (plus cert-manager) | Only for the matching lab toggle |
 | 9 | coder-logstream-kube ≥ 0.0.14 watching all namespaces | Optional |
+| 10 | Backups of the `home` volumes | Optional, recommended |
 
 ## 1. Kubernetes and nodes
 
@@ -156,6 +157,10 @@ The operators must be able to reach pods in `coder-*` namespaces (their own egre
 - run **v0.0.14 or later**: the template passes `CODER_AGENT_TOKEN` from a Secret (`coder-agent-token`), not inline, and older versions only read inline tokens;
 - set `namespaces: []` (watch all), because workspace namespaces are created dynamically;
 - that makes the chart grant `get` on **all** Secrets. Narrow the rule to `resourceNames: ["coder-agent-token"]`, for example with a Flux or Kustomize post-render patch.
+
+## 10. Backups (optional, recommended)
+
+The template backs nothing up. The `home` PVC is the only state worth protecting; the template recreates everything else in the namespace, and the labs are scratch. [`docs/backups/`](../../docs/backups/README.md) has an example Kasten K10 policy that selects workspace namespaces by label (`coder.io/tenant`), and a restore procedure. Read it before your first restore: with Capsule, K10 can't restore straight into a workspace namespace, and `overwriteExisting` deletes the existing `home` first.
 
 ## Verify
 

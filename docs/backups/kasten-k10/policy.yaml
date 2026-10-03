@@ -1,0 +1,52 @@
+# Daily backup and off-cluster export of every k8s-stack workspace's `home`.
+# See ../README.md for why it is shaped this way, and how to restore.
+#
+# Replace <location-profile> with a K10 location profile (object storage) that
+# already exists in the K10 namespace.
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: Policy
+metadata:
+  name: coder-workspace-homes
+  namespace: kasten-io
+spec:
+  comment: "Daily snapshot + export of Coder workspace homes"
+  frequency: "@daily"
+  # With @daily, hours[0]:minutes[0] (UTC) is when both the backup and the
+  # export run. Pick a slot that does not collide with your other policies.
+  subFrequency:
+    hours: [5]
+    minutes: [15]
+  # Local snapshots. Keep this short if your CSI driver stores snapshots
+  # inside the volume: every retained snapshot pins blocks the workspace has
+  # already freed.
+  retention:
+    daily: 7
+  # Matches namespaces by label, so workspaces created after the policy are
+  # picked up at the next run. K10 also matches Deployment and StatefulSet
+  # labels: keep this label off workloads in other namespaces.
+  selector:
+    matchLabels:
+      coder.io/tenant: "true"
+  actions:
+    - action: backup
+      backupParameters:
+        filters:
+          # `home` only: the template recreates everything else in the
+          # namespace, and the lab databases are scratch.
+          includeResources:
+            - group: ""
+              resource: persistentvolumeclaims
+              name: home
+    - action: export
+      exportParameters:
+        frequency: "@daily"
+        profile:
+          name: <location-profile>
+          namespace: kasten-io
+        exportData:
+          enabled: true
+      # Exports outlive a deleted workspace and may never be retired by this
+      # retention once its namespace is gone, so keep the tail short.
+      retention:
+        daily: 14
+        weekly: 4

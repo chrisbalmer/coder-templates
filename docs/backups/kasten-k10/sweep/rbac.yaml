@@ -1,0 +1,32 @@
+# Just enough for k10-sweep-removed-apps.py: list namespaces to find removed
+# apps, and list/delete K10 RestorePointContents (deleting one makes K10
+# retire its artifacts, exported data included).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k10-sweep
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k10-sweep
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["list"]
+  - apiGroups: ["apps.kio.kasten.io"]
+    resources: ["restorepointcontents"]
+    verbs: ["list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k10-sweep
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k10-sweep
+subjects:
+  - kind: ServiceAccount
+    name: k10-sweep
+    namespace: kasten-io

@@ -1,0 +1,16 @@
+# Hands a restored volume to a stopped workspace as its `home` (step 2b in
+# ../README.md). The PV must already be released from the scratch namespace,
+# have no claimRef, and carry the tenant label.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home
+  namespace: <workspace-namespace>
+spec:
+  accessModes: [ReadWriteOnce]
+  # Must match the PV's storage class and capacity, or it won't bind.
+  storageClassName: <storage-class>
+  volumeName: <pv-name>
+  resources:
+    requests:
+      storage: <pv-capacity> # e.g. 10Gi

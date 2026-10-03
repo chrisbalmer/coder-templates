@@ -1,0 +1,12 @@
+# kubectl apply -k docs/backups/kasten-k10/sweep
+# Set the policy name and grace period in cronjob.yaml first.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kasten-io
+resources:
+  - rbac.yaml
+  - cronjob.yaml
+configMapGenerator:
+  - name: k10-sweep-script
+    files:
+      - k10-sweep-removed-apps.py

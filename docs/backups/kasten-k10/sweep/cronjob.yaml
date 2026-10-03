@@ -1,0 +1,64 @@
+# Retires the restore points of deleted workspaces once they are older than
+# --min-age-days. That is the window for restoring a deleted workspace: the
+# age is measured from each restore point's creation, so the newest export
+# survives about that long after the workspace was deleted.
+#
+# With Flux, put the number in postBuild.substitute (e.g. ${SWEEP_MIN_AGE_DAYS})
+# and add the annotation kustomize.toolkit.fluxcd.io/substitute: disabled to
+# the generated ConfigMap so the script body is left alone.
+#
+# If K10's namespace has a default-deny egress policy, this pod needs the
+# API server (and DNS) like the rest of K10.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k10-sweep-removed-apps
+spec:
+  # After your nightly exports have finished.
+  schedule: "30 7 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 604800
+      template:
+        spec:
+          serviceAccountName: k10-sweep
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: sweep
+              image: docker.io/library/python:3.14-alpine
+              command:
+                - python3
+                - /script/k10-sweep-removed-apps.py
+                - --policy=coder-workspace-homes
+                - --min-age-days=30
+                - --delete
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: k10-sweep-script
