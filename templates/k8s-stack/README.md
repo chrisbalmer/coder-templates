@@ -67,6 +67,54 @@ overrides both. If you set nothing, commits use your Coder name and login email:
 writes those to `/etc/gitconfig` as a fallback on every start. The "Git identity fallback"
 startup log shows which identity is in effect.
 
+## Agent skills
+
+Every start installs **agent skills** (folders with a `SKILL.md` that teach a coding agent a
+workflow) from git repositories your admin chooses. Out of the box that's
+[chrisbalmer/ai-tools](https://github.com/chrisbalmer/ai-tools) and
+[coder/skills](https://github.com/coder/skills), at pinned tags. The "Agent skills" startup log
+lists what was installed, and any repository it couldn't reach.
+
+| Agent | Where it finds them |
+|---|---|
+| Codex, opencode, Xum, Coder Agents | `~/.agents/skills/<name>` (copies) |
+| Claude Code | As plugins (for example `ai-tools@ai-tools`), set in Claude Code's managed settings. Repositories that aren't Claude Code plugins are copied to `~/.claude/skills/<name>` instead |
+
+- Claude Code fetches the plugins in the background when a session starts, so the **first
+  session may not show them: run `/reload-plugins`**, or start a new session.
+- Plugins installed this way are set by the template (managed settings), so they **can't be
+  turned off** inside the workspace.
+- Your own skills are safe: the template only updates or removes skills it installed itself, and
+  never replaces a folder you created. If you have a skill with the same name as one it installs,
+  yours stays and the startup log says so. Edits to a skill the template installed are
+  overwritten on the next start; copy it under a new name to change it.
+- Coder Agents also reads `~/.coder/skills` and your repository's `.agents/skills`.
+
+**For admins:** the template variable `agent_skill_sources` is a JSON list, passed on every push
+like the other template variables (see `REQUIREMENTS.md`). Each entry has a `name`, a clone
+`url` and a `ref` (a tag or branch), plus two optional fields:
+
+- `skills`: the names to copy (all by default). A Claude Code plugin always brings all of its
+  skills.
+- `claude_plugin`: default `true`. `false` copies the skills to `~/.claude/skills` instead of
+  registering the repository as a Claude Code plugin marketplace.
+
+Earlier entries win when two provide the same skill name, and `[]` removes everything the
+template installed. For example, to add a private repository:
+
+```json
+[
+  {"name": "ai-tools", "url": "https://github.com/chrisbalmer/ai-tools.git", "ref": "v0.4.0"},
+  {"name": "coder-skills", "url": "https://github.com/coder/skills.git", "ref": "v0.2.0"},
+  {"name": "team", "url": "git@git.example.com:org/skills.git", "ref": "main", "skills": ["deploy", "review-checklist"]}
+]
+```
+
+In this repository's `CODER_TEMPLATE_VARIABLES` it can also be written as a YAML list, which CI
+passes on as JSON. An SSH URL is cloned with each user's Coder SSH key, so every user needs that
+key (`coder publickey`) added to their account on the forge. Claude Code clones a plugin
+repository the same way.
+
 ## Kubernetes access
 
 The workspace runs in its own namespace, `coder-<owner>-<workspace>`, and its

@@ -25,6 +25,15 @@ uid 1000, seccomp `RuntimeDefault`, and `NET_RAW`/`MKNOD` dropped. Sudo works: w
 namespaces enforce Pod Security `baseline`, not `restricted`. What a cluster needs for it is in
 [`templates/k8s-stack/REQUIREMENTS.md`](templates/k8s-stack/REQUIREMENTS.md).
 
+### Shared modules
+
+Terraform modules that more than one template can use live in [`modules/`](modules/), for
+example [`agent-skills`](modules/agent-skills/README.md), which installs agent skills from git
+repositories. A template uses one as `source = "./modules/<name>"`. Coder uploads only the
+template's own directory, without symlinks or hidden files, so `scripts/vendor-modules.sh`
+copies `modules/` into every `templates/<name>/modules/` (gitignored). CI runs it before linting
+and before every push; run it yourself before local checks.
+
 Backing up workspace homes, with example Kasten K10 policies and a restore procedure, is covered in
 [`docs/backups/`](docs/backups/README.md).
 
@@ -59,8 +68,8 @@ Coder doesn't keep template variable values between pushes, so CI passes
 `CODER_TEMPLATE_VARIABLES` with `--variables-file` on every push. The `coder` CLI is downloaded
 from your deployment, so it always matches the server.
 
-1. Merge the change to `main`. CI lints **every** template: `terraform fmt`, `validate`,
-   `tflint`, the `template.yaml` checks, and that every icon path exists in Coder (on your
+1. Merge the change to `main`. CI lints **every** template and shared module: `terraform fmt`,
+   `validate`, `tflint`, the `template.yaml` checks, and that every icon path exists in Coder (on your
    deployment when `CODER_URL` is set, otherwise in Coder's source at `CODER_VERSION`).
 2. Tag a release candidate with an **annotated** tag, whose message is what users see in Coder's
    "Update workspace?" dialog (a lightweight tag falls back to the commit subject):
@@ -86,6 +95,7 @@ template-page names (see above). The first `<name>-vX.Y.Z` tag creates the templ
 ## Local checks
 
 ```bash
+./scripts/vendor-modules.sh
 terraform fmt -check -recursive
 cd templates/k8s-stack
 terraform init -backend=false

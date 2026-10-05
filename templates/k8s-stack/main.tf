@@ -46,6 +46,11 @@ resource "coder_agent" "main" {
   # .mcp.json is listed by absolute path rather than relative to dir.
   env = {
     "CODER_AGENT_EXP_MCP_CONFIG_FILES" = "~/.coder/.mcp.json,${local.workspace_path}/.mcp.json"
+    # Setting this replaces Coder's default (~/.coder/skills,.agents/skills), so
+    # the defaults are kept. Relative paths resolve against the agent's dir,
+    # which is unset here, so the repo's .agents/skills is also listed by
+    # absolute path. The first skill with a name wins: home before the repo.
+    "CODER_AGENT_EXP_SKILLS_DIRS" = "~/.coder/skills,.agents/skills,~/.agents/skills,${local.workspace_path}/.agents/skills"
   }
 
   # The home PVC hides anything the image put under /home/coder, so nothing
@@ -169,6 +174,17 @@ module "claude-code" {
   version  = "5.5.1"
   agent_id = coder_agent.main.id
   workdir  = local.workspace_path
+}
+
+# Skills from the git repositories in agent_skill_sources, for every coding
+# agent: copied to ~/.agents/skills, and registered with Claude Code as plugin
+# marketplaces in its managed settings. modules/ is the repo-root modules/
+# directory, copied in by scripts/vendor-modules.sh before init and push.
+module "agent_skills" {
+  count    = local.start
+  source   = "./modules/agent-skills"
+  agent_id = coder_agent.main.id
+  sources  = jsondecode(var.agent_skill_sources)
 }
 
 module "vscode-web" {
