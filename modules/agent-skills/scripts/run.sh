@@ -11,6 +11,8 @@ set -uo pipefail
 
 log() { printf '[agent-skills] %s\n' "$*"; }
 warn() { printf '[agent-skills] WARN: %s\n' "$*"; }
+tilde() { printf '%s' "${1/#"$HOME"/\~}"; }
+first_line() { printf '%s\n' "$1" | sed -n '/[^[:space:]]/{p;q;}'; }
 
 if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4))); then
   warn "bash 4.4 or later is required (found $BASH_VERSION)"
@@ -57,11 +59,22 @@ if command -v flock >/dev/null 2>&1; then
   }
 fi
 
-OLD_MANIFEST=$(jq -c 'if type == "object" then . else {} end' "$MANIFEST" 2>/dev/null) || OLD_MANIFEST='{}'
-[ -n "$OLD_MANIFEST" ] || OLD_MANIFEST='{}'
-
-tilde() { printf '%s' "${1/#"$HOME"/\~}"; }
-first_line() { printf '%s\n' "$1" | sed -n '/[^[:space:]]/{p;q;}'; }
+# The manifest records which entries in the skills directories this script
+# installed. It's rewritten atomically after every change, and an entry is
+# recorded before its folder is swapped in, so a crash never orphans a skill.
+EMPTY_MANIFEST='{"version":1,"skills":{"agents":{},"claude":{}}}'
+MANIFEST_JSON=$EMPTY_MANIFEST
+if [ -e "$MANIFEST" ]; then
+  if m=$(jq -ce 'select(type == "object" and (.skills | type) == "object")
+      | .skills.agents //= {} | .skills.claude //= {}' "$MANIFEST" 2>/dev/null); then
+    MANIFEST_JSON=$m
+  else
+    bad="$MANIFEST.corrupt-$(date +%Y%m%d%H%M%S)"
+    mv "$MANIFEST" "$bad"
+    warn "$(tilde "$MANIFEST") was unreadable; moved it to $(tilde "$bad") and started a new one." \
+      "Skills installed earlier are adopted again only where they match the source exactly; others are reported below"
+  fi
+fi
 
 run_git() {
   if command -v timeout >/dev/null 2>&1; then
@@ -74,7 +87,7 @@ run_git() {
 # checkout_ref DIR REF: shallow-fetch REF (a tag, branch or commit) from origin
 # and check it out, discarding local changes. Prints git's errors.
 checkout_ref() {
-  run_git -C "$1" fetch --quiet --depth 1 --force --no-tags origin "$2" 2>&1 &&
+  run_git -C "$1" fetch --quiet --depth 1 --force --no-tags --end-of-options origin "$2" 2>&1 &&
     git -C "$1" -c advice.detachedHead=false checkout --quiet --force --detach 'FETCH_HEAD^{commit}' 2>&1 &&
     git -C "$1" clean -qffdx 2>&1
 }
@@ -98,7 +111,7 @@ sync_source() {
   # New source, or its URL changed: clone beside the old checkout and swap.
   tmp="$SRC_DIR/.new-$name"
   rm -rf "$tmp"
-  if err=$(git init --quiet "$tmp" 2>&1 && git -C "$tmp" remote add origin "$url" 2>&1 && checkout_ref "$tmp" "$ref"); then
+  if err=$(git init --quiet "$tmp" 2>&1 && git -C "$tmp" remote add -- origin "$url" 2>&1 && checkout_ref "$tmp" "$ref"); then
     git -C "$tmp" config agent-skills.ref "$ref"
     rm -rf "$dir" && mv "$tmp" "$dir" && return 0
     warn "$name: can't replace $dir"
@@ -112,6 +125,11 @@ sync_source() {
   fi
   return 1
 }
+
+# Skills are copied as plain files; hidden entries (.git and the like) are left
+# out, and ignored when comparing.
+same_content() { diff -rq -x '.*' "$1" "$2" >/dev/null 2>&1; }
+has_symlinks() { [ -n "$(find "$1" -name '.?*' -prune -o -type l -print -quit)" ]; }
 
 # The `name:` from SKILL.md's front matter, if any.
 frontmatter_name() {
@@ -139,7 +157,7 @@ list_skill_dirs() {
     sed -e 's|^\./||' -e 's|SKILL\.md$||' -e 's|/$||' | LC_ALL=C sort)
 }
 
-declare -A WANT_AGENTS=() WANT_CLAUDE=() FAILED=() CONFIGURED=() MARKETPLACE_OF=()
+declare -A WANT_AGENTS=() WANT_CLAUDE=() FAILED=() CONFIGURED=() MARKETPLACE_OF=() SYMLINKED=()
 ORDER_AGENTS=()
 ORDER_CLAUDE=()
 CLAUDE_SETTINGS='{}'
@@ -151,11 +169,16 @@ for ((i = 0; i < count; i++)); do
   url=$(jq -r '.url // ""' <<<"$src")
   ref=$(jq -r '.ref // ""' <<<"$src")
   claude_plugin=$(jq -r 'if .claude_plugin == false then "false" else "true" end' <<<"$src")
-  mapfile -t filter < <(jq -r '(.skills // ["*"])[]' <<<"$src")
-  [ "${#filter[@]}" -gt 0 ] || filter=("*")
+  # "*" anywhere in skills means all of them.
+  mapfile -t filter < <(jq -r 'if (.skills // []) | (length == 0 or index("*") != null) then "*" else .skills[] end' <<<"$src")
 
   if ! [[ $name =~ $SOURCE_RE ]] || [ -z "$url" ] || [ -z "$ref" ]; then
     warn "source $((i + 1)): needs a valid name, url and ref; skipping"
+    continue
+  fi
+  # Never let a url or ref be read as a git option.
+  if [[ $url == -* || $ref == -* ]]; then
+    warn "$name: url and ref must not start with \"-\"; skipping"
     continue
   fi
   if [ -n "${CONFIGURED[$name]+x}" ]; then
@@ -219,12 +242,18 @@ for ((i = 0; i < count; i++)); do
       continue
     fi
     if [ -n "${WANT_AGENTS[$skill]+x}" ]; then
-      warn "$name: skipping $skill: already provided by ${WANT_AGENTS[$skill]%%$'\t'*}"
+      other=${WANT_AGENTS[$skill]##*$'\t'}
+      warn "$name: skipping ${rel:-.}: skill $skill is already provided by ${other#"$SRC_DIR"/}"
       continue
     fi
     fm=$(frontmatter_name "$path/SKILL.md")
     if [ "$fm" != "$skill" ]; then
       warn "$name: $skill/SKILL.md declares name \"$fm\"; Coder Agents only loads skills whose name matches the directory"
+    fi
+    if has_symlinks "$path"; then
+      # Still wanted, so an installed copy is kept rather than removed.
+      warn "$name: skipping ${rel:-.}: it contains symlinks (skills must be plain files); any installed copy is kept"
+      SYMLINKED[$skill]=1
     fi
     size=$(wc -c <"$path/SKILL.md" | tr -d ' ')
     [ "$size" -le 65536 ] || warn "$name: $skill/SKILL.md is $size bytes; Coder Agents reads only the first 64 KiB"
@@ -235,7 +264,7 @@ for ((i = 0; i < count; i++)); do
       WANT_CLAUDE[$skill]=${WANT_AGENTS[$skill]}
       ORDER_CLAUDE+=("$skill")
     fi
-    n=$((n + 1))
+    [ -n "${SYMLINKED[$skill]+x}" ] || n=$((n + 1))
   done < <(list_skill_dirs "$dir")
   if [ "${filter[0]}" != "*" ]; then
     for f in "${filter[@]}"; do
@@ -246,17 +275,54 @@ for ((i = 0; i < count; i++)); do
   log "$name: $used_ref ($commit), $n skill$([ "$n" = 1 ] || echo s)$plugin_note"
 done
 
-NEW_ENTRIES=""
-record() { NEW_ENTRIES+="$1"$'\t'"$2"$'\t'"$3"$'\t'"$4"$'\n'; }
-owned() { jq -e --arg k "$1" --arg n "$2" '.skills[$k][$n] != null' >/dev/null 2>&1 <<<"$OLD_MANIFEST"; }
+save_manifest() {
+  local tmp
+  tmp=$(mktemp "$DATA_DIR/manifest.XXXXXX") || return 1
+  if ! { printf '%s\n' "$MANIFEST_JSON" >"$tmp" && mv -f "$tmp" "$MANIFEST"; }; then
+    rm -f "$tmp"
+    warn "can't write $(tilde "$MANIFEST")"
+  fi
+}
+# manifest_set KEY SKILL SOURCE REF / manifest_del KEY SKILL: change the
+# in-memory manifest and save it, when that changes anything.
+manifest_set() {
+  local m
+  m=$(jq -c --arg k "$1" --arg n "$2" --arg s "$3" --arg r "$4" '.skills[$k][$n] = {source: $s, ref: $r}' <<<"$MANIFEST_JSON")
+  [ "$m" = "$MANIFEST_JSON" ] && return 0
+  MANIFEST_JSON=$m
+  save_manifest
+}
+manifest_del() {
+  local m
+  m=$(jq -c --arg k "$1" --arg n "$2" 'del(.skills[$k][$n])' <<<"$MANIFEST_JSON")
+  [ "$m" = "$MANIFEST_JSON" ] && return 0
+  MANIFEST_JSON=$m
+  save_manifest
+}
+owned() { jq -e --arg k "$1" --arg n "$2" '.skills[$k][$n] != null' >/dev/null 2>&1 <<<"$MANIFEST_JSON"; }
 
 # reconcile KEY ROOT WANT ORDER: make ROOT hold exactly the wanted skills that
 # this script owns, leaving everything else alone.
 reconcile() {
   local key=$1 root=$2
   local -n want=$3 order=$4
-  local skill src ref path dest tmp old existed
-  local installed=() updated=() removed=() unchanged=0 skipped=0
+  local skill src ref path dest tmp old existed d base
+  local installed=() updated=() removed=() adopted=() unchanged=0 skipped=0
+
+  # Leftovers of an interrupted run: finish or undo its swap.
+  for d in "$root"/.agent-skills-new-* "$root"/.agent-skills-old-*; do
+    [ -e "$d" ] || continue
+    base=${d##*/}
+    case $base in
+    .agent-skills-old-*)
+      if [ ! -e "$root/${base#.agent-skills-old-}" ]; then
+        mv "$d" "$root/${base#.agent-skills-old-}" && continue
+      fi
+      ;;
+    esac
+    rm -rf "$d"
+  done
+
   for skill in "${order[@]}"; do
     IFS=$'\t' read -r src ref path <<<"${want[$skill]}"
     dest="$root/$skill"
@@ -264,27 +330,37 @@ reconcile() {
     if [ -e "$dest" ] || [ -L "$dest" ]; then
       existed=1
       if ! owned "$key" "$skill"; then
-        warn "$(tilde "$dest") exists and isn't managed here; not installing $skill from $src"
+        if [ -d "$dest" ] && [ ! -L "$dest" ] && same_content "$path" "$dest"; then
+          # Identical to what we'd install, so nothing of the user's is at
+          # stake: e.g. the manifest was lost after an earlier install.
+          manifest_set "$key" "$skill" "$src" "$ref"
+          adopted+=("$skill")
+          continue
+        fi
+        warn "$(tilde "$dest") exists and wasn't installed by agent-skills, so $skill from $src is skipped." \
+          "To get it, remove that folder; if agent-skills did install it, restore .skills.${key}[\"$skill\"] in $(tilde "$MANIFEST")"
         skipped=$((skipped + 1))
         continue
       fi
-      if [ ! -L "$dest" ] && diff -rq "$path" "$dest" >/dev/null 2>&1; then
-        record "$key" "$skill" "$src" "$ref"
-        unchanged=$((unchanged + 1))
-        continue
-      fi
+    fi
+    [ -n "${SYMLINKED[$skill]+x}" ] && continue
+    if [ "$existed" = 1 ] && [ ! -L "$dest" ] && same_content "$path" "$dest"; then
+      manifest_set "$key" "$skill" "$src" "$ref"
+      unchanged=$((unchanged + 1))
+      continue
     fi
     mkdir -p "$root"
     tmp="$root/.agent-skills-new-$skill"
     old="$root/.agent-skills-old-$skill"
     rm -rf "$tmp" "$old"
-    # -L: real files, never links back into the checkout.
-    if ! cp -RL "$path" "$tmp" 2>/dev/null; then
-      warn "can't copy $skill from $src"
+    if ! cp -RP "$path" "$tmp" 2>/dev/null; then
+      warn "$src: can't copy $skill"
       rm -rf "$tmp"
-      [ "$existed" = 1 ] && record "$key" "$skill" "$src" "$ref"
       continue
     fi
+    find "$tmp" -mindepth 1 -name '.*' -prune -exec rm -rf {} +
+    # Owned from here on, so an interrupted swap is still cleaned up next time.
+    manifest_set "$key" "$skill" "$src" "$ref"
     if [ "$existed" = 1 ]; then mv "$dest" "$old"; fi
     if mv "$tmp" "$dest"; then
       rm -rf "$old"
@@ -292,27 +368,25 @@ reconcile() {
     else
       warn "can't install $skill into $(tilde "$root")"
       rm -rf "$tmp"
-      [ "$existed" = 1 ] && mv "$old" "$dest"
+      if [ "$existed" = 1 ]; then mv "$old" "$dest"; else manifest_del "$key" "$skill"; fi
     fi
-    record "$key" "$skill" "$src" "$ref"
   done
 
   # Owned entries nobody provides any more. A configured source that couldn't
   # be fetched keeps what it installed before.
-  while IFS=$'\t' read -r skill src ref; do
+  while IFS=$'\t' read -r skill src; do
     [ -n "$skill" ] || continue
     [ -n "${want[$skill]+x}" ] && continue
-    if [ -n "${FAILED[$src]+x}" ]; then
-      record "$key" "$skill" "$src" "$ref"
-      continue
+    [ -n "${FAILED[$src]+x}" ] && continue
+    if [[ $skill =~ $SKILL_RE ]]; then
+      rm -rf "${root:?}/$skill"
+      removed+=("$skill")
     fi
-    [[ $skill =~ $SKILL_RE ]] || continue
-    rm -rf "${root:?}/$skill"
-    removed+=("$skill")
-  done < <(jq -r --arg k "$key" '.skills[$k] // {} | to_entries[] | [.key, .value.source, .value.ref] | @tsv' <<<"$OLD_MANIFEST")
+    manifest_del "$key" "$skill"
+  done < <(jq -r --arg k "$key" '.skills[$k] // {} | to_entries[] | [.key, .value.source] | @tsv' <<<"$MANIFEST_JSON")
 
-  if [ $((${#installed[@]} + ${#updated[@]} + ${#removed[@]})) -gt 0 ]; then
-    log "$(tilde "$root"): installed ${#installed[@]}${installed[*]:+ (${installed[*]})}, updated ${#updated[@]}${updated[*]:+ (${updated[*]})}, removed ${#removed[@]}${removed[*]:+ (${removed[*]})}, unchanged $unchanged"
+  if [ $((${#installed[@]} + ${#updated[@]} + ${#removed[@]} + ${#adopted[@]})) -gt 0 ]; then
+    log "$(tilde "$root"): installed ${#installed[@]}${installed[*]:+ (${installed[*]})}, updated ${#updated[@]}${updated[*]:+ (${updated[*]})}, removed ${#removed[@]}${removed[*]:+ (${removed[*]})}${adopted[*]:+, adopted ${#adopted[@]} (${adopted[*]})}, unchanged $unchanged"
     CHANGED=1
   elif [ $((unchanged + skipped)) -gt 0 ]; then
     log "$(tilde "$root"): $unchanged skills, unchanged"
@@ -334,13 +408,8 @@ for d in "$SRC_DIR"/*/; do
   }
 done
 
-# Manifest: which entries in the skills directories this script owns.
-new_manifest=$(printf '%s' "$NEW_ENTRIES" | jq -R -s '
-  {version: 1, skills: (split("\n") | map(select(length > 0) | split("\t"))
-    | reduce .[] as $e ({agents: {}, claude: {}}; .[$e[0]][$e[1]] = {source: $e[2], ref: $e[3]}))}')
-if [ "$(jq -S . <<<"$new_manifest")" != "$(jq -S . <<<"$OLD_MANIFEST" 2>/dev/null)" ]; then
-  printf '%s\n' "$new_manifest" >"$MANIFEST.new" && mv "$MANIFEST.new" "$MANIFEST"
-fi
+# A new or migrated manifest file, even when no entry changed.
+[ -f "$MANIFEST" ] || save_manifest
 
 # Claude Code managed settings: one drop-in for every registered marketplace.
 write_managed() {
@@ -367,7 +436,8 @@ write_managed() {
   fi
   tmp=$(mktemp "$DATA_DIR/managed.XXXXXX") || return 0
   printf '%s\n' "$content" >"$tmp"
-  if "${sudo[@]}" install -d -m 0755 "$MANAGED_DIR" && "${sudo[@]}" install -m 0644 "$tmp" "$MANAGED_FILE"; then
+  if { [ -d "$MANAGED_DIR" ] || "${sudo[@]}" install -d -m 0755 "$MANAGED_DIR"; } &&
+    "${sudo[@]}" install -m 0644 "$tmp" "$MANAGED_FILE"; then
     log "wrote $MANAGED_FILE ($(jq -r '.extraKnownMarketplaces | keys | join(", ")' <<<"$content"))"
     CHANGED=1
   else

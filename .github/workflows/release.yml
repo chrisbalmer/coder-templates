@@ -69,11 +69,6 @@ jobs:
       - name: terraform init and validate
         run: |
           set -euo pipefail
-          for d in modules/*/; do
-            echo "::group::$d"
-            (cd "$d" && terraform init -backend=false -input=false && terraform validate)
-            echo "::endgroup::"
-          done
           for d in templates/*/; do
             echo "::group::$d"
             (cd "$d" && terraform init -backend=false -input=false -lockfile=readonly && terraform validate)
@@ -81,7 +76,9 @@ jobs:
           done
 
       - name: tflint
-        # Bundled ruleset only, so --init downloads nothing.
+        # Bundled ruleset only, so --init downloads nothing. Shared modules are
+        # validated through the templates that vendor them, and linted here on
+        # their own (tflint needs no terraform init for them).
         run: |
           set -euo pipefail
           tflint --init --config "$PWD/.tflint.hcl"

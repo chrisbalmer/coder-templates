@@ -85,28 +85,35 @@ lists what was installed, and any repository it couldn't reach.
 - Plugins installed this way are set by the template (managed settings), so they **can't be
   turned off** inside the workspace.
 - Your own skills are safe: the template only updates or removes skills it installed itself, and
-  never replaces a folder you created. If you have a skill with the same name as one it installs,
-  yours stays and the startup log says so. Edits to a skill the template installed are
-  overwritten on the next start; copy it under a new name to change it.
+  never replaces a folder you created, unless it has the name of a skill the template installed
+  earlier. If you have a skill with the same name as one it installs, yours stays and the
+  startup log says so (remove your folder to get the template's). Edits to a skill the template
+  installed are overwritten on the next start; copy it under a new name to change it.
 - Coder Agents also reads `~/.coder/skills` and your repository's `.agents/skills`.
 
 **For admins:** the template variable `agent_skill_sources` is a JSON list, passed on every push
 like the other template variables (see `REQUIREMENTS.md`). Each entry has a `name`, a clone
 `url` and a `ref` (a tag or branch), plus two optional fields:
 
-- `skills`: the names to copy (all by default). A Claude Code plugin always brings all of its
-  skills.
+- `skills`: the names to copy. All by default, or when the list contains `"*"`. A Claude Code
+  plugin always brings all of its skills.
 - `claude_plugin`: default `true`. `false` copies the skills to `~/.claude/skills` instead of
   registering the repository as a Claude Code plugin marketplace.
 
 Earlier entries win when two provide the same skill name, and `[]` removes everything the
-template installed. For example, to add a private repository:
+template installed. Skills must be plain files: one that contains a symlink is skipped.
+
+A Claude Code plugin can ship hooks and MCP servers, which then run in every workspace. With a
+branch as `ref`, whoever can push to that branch can change them at any time, so prefer tags,
+from repositories you trust.
+
+For example, to add a private repository:
 
 ```json
 [
   {"name": "ai-tools", "url": "https://github.com/chrisbalmer/ai-tools.git", "ref": "v0.4.0"},
   {"name": "coder-skills", "url": "https://github.com/coder/skills.git", "ref": "v0.2.0"},
-  {"name": "team", "url": "git@git.example.com:org/skills.git", "ref": "main", "skills": ["deploy", "review-checklist"]}
+  {"name": "team", "url": "git@git.example.com:org/skills.git", "ref": "v1.0.0", "skills": ["deploy", "review-checklist"]}
 ]
 ```
 

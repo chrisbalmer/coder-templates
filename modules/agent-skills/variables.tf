@@ -17,7 +17,8 @@ variable "sources" {
   - name: short id, used for the checkout directory and in logs.
   - url: HTTPS or SSH (scp-form or ssh://) clone URL.
   - ref: tag or branch to check out.
-  - skills: skill names (directory names) to install; ["*"] installs all.
+  - skills: skill names (directory names) to install; "*" anywhere in the
+    list installs all.
   - claude_plugin: register the repo's .claude-plugin/marketplace.json with
     Claude Code (managed settings) instead of copying its skills to
     ~/.claude/skills.
@@ -37,6 +38,12 @@ variable "sources" {
   validation {
     condition     = alltrue([for s in var.sources : trimspace(s.url) != "" && trimspace(s.ref) != ""])
     error_message = "Each source needs a url and a ref."
+  }
+
+  validation {
+    # git would read them as options.
+    condition     = alltrue([for s in var.sources : !startswith(s.url, "-") && !startswith(s.ref, "-")])
+    error_message = "A source's url and ref must not start with \"-\"."
   }
 
   validation {

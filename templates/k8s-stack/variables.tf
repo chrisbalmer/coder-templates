@@ -67,10 +67,11 @@ variable "agent_skill_sources" {
   description = <<-EOF
   Git repositories whose agent skills are installed into every workspace on
   start, as a JSON list (a string, so CODER_TEMPLATE_VARIABLES can pass it).
-  Each entry: {"name", "url", "ref"}, plus optional "skills" (names to install,
-  default ["*"]) and "claude_plugin" (default true: register the repo's Claude
-  Code marketplace instead of copying its skills to ~/.claude/skills). Earlier
-  entries win name clashes. "[]" installs nothing and removes what was installed.
+  Each entry: {"name", "url", "ref"}, plus optional "skills" (names to install;
+  "*" anywhere, or the default ["*"], means all) and "claude_plugin" (default
+  true: register the repo's Claude Code marketplace instead of copying its
+  skills to ~/.claude/skills). Earlier entries win name clashes. "[]" installs
+  nothing and removes what was installed. Prefer tags to branches for ref.
   EOF
   default     = <<-EOF
   [
@@ -84,9 +85,14 @@ variable "agent_skill_sources" {
       startswith(trimspace(var.agent_skill_sources), "[") &&
       try(alltrue([
         for s in jsondecode(var.agent_skill_sources) :
-        try(s.name != "" && s.url != "" && s.ref != "", false)
+        try(
+          s.name != "" && s.url != "" && s.ref != "" &&
+          !startswith(s.url, "-") && !startswith(s.ref, "-") &&
+          length(setsubtract(keys(s), ["name", "url", "ref", "skills", "claude_plugin"])) == 0,
+          false
+        )
       ]), false)
     )
-    error_message = "agent_skill_sources must be a JSON list of objects, each with a non-empty name, url and ref."
+    error_message = "agent_skill_sources must be a JSON list of objects with a non-empty name, url and ref (neither starting with \"-\"), and optional skills and claude_plugin; no other keys."
   }
 }
