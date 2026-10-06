@@ -9,7 +9,7 @@ come from [coder-images](https://github.com/chrisbalmer/coder-images).
 | Template | Display name | Status |
 |---|---|---|
 | [`k8s-stack`](templates/k8s-stack/README.md) | Linux Stack on Kubernetes | Linux container workspaces, one namespace each, with presets and throwaway lab databases |
-| `kali-desktop`, `ubuntu-desktop` | — | Planned: desktop (GUI) workspaces on the existing desktop images |
+| [`k8s-desktop`](templates/k8s-desktop/README.md) | Linux Desktop on Kubernetes | Browser desktops (Xfce over KasmVNC) on the same platform, with Ubuntu and Kali security-lab presets |
 | macOS (Tart/Orchard) | — | Planned |
 
 Template descriptions are how Coder AI picks a template, so each one says what
