@@ -1,0 +1,6 @@
+# Template metadata, applied by CI (coder templates edit) after every push.
+# Coder limits the description to under 128 bytes; CI checks it.
+name: k8s-desktop
+display_name: Linux Desktop on Kubernetes
+icon: /icon/desktop.svg
+description: Linux GUI desktop in the browser (KasmVNC). Presets for Ubuntu, and Kali for security labs. Not for headless dev work.
