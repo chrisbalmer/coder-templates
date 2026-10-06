@@ -112,7 +112,7 @@ jobs:
         # Coder's bundled set has no React, MinIO or MySQL icon; a missing
         # path renders as a blank square in the UI rather than failing. Checked
         # on coderd when CODER_URL is set, else in Coder's source at CODER_VERSION
-        # (coderd serves site/static/ at /).
+        # (coderd serves site/static/ at /). yq -N: no "---" between files.
         env:
           # Not on pull requests: their paths would become requests to coderd.
           CODER_URL: ${{ github.event_name != 'pull_request' && vars.CODER_URL || '' }}
@@ -121,7 +121,7 @@ jobs:
           base="${CODER_URL:-https://raw.githubusercontent.com/coder/coder/${CODER_VERSION}/site/static}"
           fail=0
           for p in $(grep -rhoE '"/(icon|emojis)/[^"]+"' modules templates --include='*.tf' | tr -d '"' | sort -u) \
-                   $(yq -r .icon templates/*/template.yaml | sort -u); do
+                   $(yq -N -r .icon templates/*/template.yaml | sort -u); do
             code=$(curl -s -o /dev/null -w '%{http_code}' "${base}${p}")
             [ "$code" = 200 ] || { echo "::error::icon $p returns $code from $base"; fail=1; }
           done
