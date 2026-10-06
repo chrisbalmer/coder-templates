@@ -42,11 +42,10 @@ resource "coder_agent" "main" {
   os   = "linux"
   arch = "amd64"
   # No dir: it's deprecated, and anything but $HOME breaks Coder Desktop file
-  # sync. The modules below open the repo folder themselves, so the repo's
-  # .mcp.json is listed by absolute path rather than relative to dir.
-  env = {
-    "CODER_AGENT_EXP_MCP_CONFIG_FILES" = "~/.coder/.mcp.json,${local.workspace_path}/.mcp.json"
-  }
+  # sync. The modules below open the repo folder themselves. The agent's own
+  # CODER_AGENT_EXP_* settings are in the pod's env (workspace.tf), because
+  # the agent reads them from its process environment; env here only reaches
+  # the sessions and scripts it starts.
 
   # The home PVC hides anything the image put under /home/coder, so nothing
   # here may assume a seeded home. Shell config comes from dotfiles or /etc.
@@ -169,6 +168,17 @@ module "claude-code" {
   version  = "5.5.1"
   agent_id = coder_agent.main.id
   workdir  = local.workspace_path
+}
+
+# Skills from the git repositories in agent_content_sources, for every coding
+# agent: copied to ~/.agents/skills, and registered with Claude Code as plugin
+# marketplaces in its managed settings. modules/ is the repo-root modules/
+# directory, copied in by scripts/vendor-modules.sh before init and push.
+module "agent_content" {
+  count    = local.start
+  source   = "./modules/agent-content"
+  agent_id = coder_agent.main.id
+  sources  = jsondecode(var.agent_content_sources)
 }
 
 module "vscode-web" {

@@ -59,6 +59,7 @@ The container drops `NET_RAW` and `MKNOD` (so there's no `ping`), and nothing is
 - **Coder 2.37 or later**: workspace presets, and the `coder` Terraform provider `~> 2.18`. The provisioner's Terraform must be **1.15 or later**.
 - **A provisioner with its own Kubernetes identity** (recommended): an external provisioner in its own namespace, running as a dedicated ServiceAccount, with coderd's own workspace permissions removed. External provisioners need Coder Premium. With the built-in provisioners, coderd's ServiceAccount needs everything below instead.
 - **Dotfiles default.** The template variable `default_dotfiles_uri` pre-fills the users' Dotfiles URL. `{username}` becomes the Coder username; the default is `git@github.com:{username}/dotfiles.git`, which assumes Coder usernames match GitHub usernames. Set your own pattern, or `""` for none, through `CODER_TEMPLATE_VARIABLES`.
+- **Agent skills.** The template variable `agent_content_sources` (a JSON list; the template's `README.md` has the format) names the git repositories whose skills every workspace installs on start; the default is two public GitHub repositories at pinned tags. Pass it through `CODER_TEMPLATE_VARIABLES` like the others. For a repository on a self-hosted forge over SSH, add the forge's host key with `ssh_known_hosts_extra`, and every user needs their Coder SSH key (`coder publickey`) on the forge with read access to it. The workspace's network policy must allow the forge (section 6).
 - **Registry icons.** The template uses icons Coder ships (`/icon/*`, `/emojis/*`).
 
 ### Provisioner permissions
@@ -116,6 +117,7 @@ Workspace pods need:
 | The internet (HTTPS at least) | Package installs, git, registries, AI APIs |
 | High UDP ports to private ranges | Optional: direct Coder connections (otherwise the relay is used) |
 | Your forge's SSH port | Optional: `git` over SSH to a self-hosted forge. Allow just that host and port, and add its host key with the template variable `ssh_known_hosts_extra` (GitHub's keys are built in) |
+| The hosts in `agent_content_sources` | Every start clones them (HTTPS, or SSH for SSH URLs), and Claude Code clones its plugin marketplaces from the same URLs. The default sources are on `github.com` |
 
 Recommended denies: other namespaces (so one workspace can't reach another's databases), cluster services, and your LAN. The reference setup does this with a Cilium clusterwide policy selecting `coder.io/tenant=true` namespaces, plus the tenancy controller's same-namespace NetworkPolicy for traffic to the labs.
 

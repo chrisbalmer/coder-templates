@@ -58,6 +58,11 @@ jobs:
           install -m 0755 yq /usr/local/bin/yq
           terraform version && tflint --version && yq --version
 
+      # Shared modules live in modules/ and are copied into each template, which
+      # uses them as ./modules/<name>; see the script.
+      - name: Vendor shared modules
+        run: ./scripts/vendor-modules.sh
+
       - name: terraform fmt
         run: terraform fmt -check -recursive -diff
 
@@ -71,11 +76,13 @@ jobs:
           done
 
       - name: tflint
-        # Bundled ruleset only, so --init downloads nothing.
+        # Bundled ruleset only, so --init downloads nothing. Shared modules are
+        # validated through the templates that vendor them, and linted here on
+        # their own (tflint needs no terraform init for them).
         run: |
           set -euo pipefail
           tflint --init --config "$PWD/.tflint.hcl"
-          for d in templates/*/; do tflint --config "$PWD/.tflint.hcl" --chdir "$d"; done
+          for d in modules/*/ templates/*/; do tflint --config "$PWD/.tflint.hcl" --chdir "$d"; done
 
       - name: template.yaml
         run: |
@@ -113,7 +120,7 @@ jobs:
           set -euo pipefail
           base="${CODER_URL:-https://raw.githubusercontent.com/coder/coder/${CODER_VERSION}/site/static}"
           fail=0
-          for p in $(grep -rhoE '"/(icon|emojis)/[^"]+"' templates --include='*.tf' | tr -d '"' | sort -u) \
+          for p in $(grep -rhoE '"/(icon|emojis)/[^"]+"' modules templates --include='*.tf' | tr -d '"' | sort -u) \
                    $(yq -r .icon templates/*/template.yaml | sort -u); do
             code=$(curl -s -o /dev/null -w '%{http_code}' "${base}${p}")
             [ "$code" = 200 ] || { echo "::error::icon $p returns $code from $base"; fail=1; }
@@ -146,6 +153,11 @@ jobs:
             echo "version=$version"
             echo "dir=templates/$template"
           } >> "$GITHUB_OUTPUT"
+
+      # The template uses the shared modules as ./modules/<name>; the upload
+      # must carry real copies.
+      - name: Vendor shared modules
+        run: ./scripts/vendor-modules.sh
 
       # From coderd itself, so the CLI always matches the server version.
       - name: Install coder CLI and yq

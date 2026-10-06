@@ -2,3 +2,4 @@
 *.tfstate
 *.tfstate.*
 .DS_Store
+templates/*/modules/

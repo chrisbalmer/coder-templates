@@ -61,3 +61,38 @@ variable "ssh_known_hosts_extra" {
   EOF
   default     = ""
 }
+
+variable "agent_content_sources" {
+  type        = string
+  description = <<-EOF
+  Git repositories whose agent skills are installed into every workspace on
+  start, as a JSON list (a string, so CODER_TEMPLATE_VARIABLES can pass it).
+  Each entry: {"name", "url", "ref"}, plus optional "skills" (names to install;
+  "*" anywhere, or the default ["*"], means all) and "claude_plugin" (default
+  true: register the repo's Claude Code marketplace instead of copying its
+  skills to ~/.claude/skills). Earlier entries win name clashes. "[]" installs
+  nothing and removes what was installed. Prefer tags to branches for ref.
+  EOF
+  default     = <<-EOF
+  [
+    {"name": "ai-tools", "url": "https://github.com/chrisbalmer/ai-tools.git", "ref": "v0.4.0"},
+    {"name": "coder-skills", "url": "https://github.com/coder/skills.git", "ref": "v0.2.0"}
+  ]
+  EOF
+
+  validation {
+    condition = (
+      startswith(trimspace(var.agent_content_sources), "[") &&
+      try(alltrue([
+        for s in jsondecode(var.agent_content_sources) :
+        try(
+          s.name != "" && s.url != "" && s.ref != "" &&
+          !startswith(s.url, "-") && !startswith(s.ref, "-") &&
+          length(setsubtract(keys(s), ["name", "url", "ref", "skills", "claude_plugin"])) == 0,
+          false
+        )
+      ]), false)
+    )
+    error_message = "agent_content_sources must be a JSON list of objects with a non-empty name, url and ref (neither starting with \"-\"), and optional skills and claude_plugin; no other keys."
+  }
+}
