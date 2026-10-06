@@ -117,4 +117,4 @@ everything the script installed.
 | Codex | `~/.agents/skills` (recursive) |
 | opencode | `~/.agents/skills` and `~/.claude/skills` |
 | Xum (formerly Mux) | `~/.agents/skills` (one level) |
-| Coder Agents | `CODER_AGENT_EXP_SKILLS_DIRS` (one level, no symlinked skill directories). Setting it replaces the default `~/.coder/skills,.agents/skills`, so a template that sets it should list `~/.agents/skills` and keep the defaults |
+| Coder Agents | `CODER_AGENT_EXP_SKILLS_DIRS` (one level, no symlinked skill directories). Setting it replaces the default `~/.coder/skills,.agents/skills`, so a template that sets it should list `~/.agents/skills` and keep the defaults. The agent reads it from its own process environment, so set it where the agent process starts (e.g. the workspace container's env), not in `coder_agent.env`, which only reaches the sessions and scripts the agent starts |

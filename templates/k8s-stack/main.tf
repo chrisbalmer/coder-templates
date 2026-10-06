@@ -42,16 +42,10 @@ resource "coder_agent" "main" {
   os   = "linux"
   arch = "amd64"
   # No dir: it's deprecated, and anything but $HOME breaks Coder Desktop file
-  # sync. The modules below open the repo folder themselves, so the repo's
-  # .mcp.json is listed by absolute path rather than relative to dir.
-  env = {
-    "CODER_AGENT_EXP_MCP_CONFIG_FILES" = "~/.coder/.mcp.json,${local.workspace_path}/.mcp.json"
-    # Setting this replaces Coder's default (~/.coder/skills,.agents/skills), so
-    # the defaults are kept. Relative paths resolve against the agent's dir,
-    # which is unset here, so the repo's .agents/skills is also listed by
-    # absolute path. The first skill with a name wins: home before the repo.
-    "CODER_AGENT_EXP_SKILLS_DIRS" = "~/.coder/skills,.agents/skills,~/.agents/skills,${local.workspace_path}/.agents/skills"
-  }
+  # sync. The modules below open the repo folder themselves. The agent's own
+  # CODER_AGENT_EXP_* settings are in the pod's env (workspace.tf), because
+  # the agent reads them from its process environment; env here only reaches
+  # the sessions and scripts it starts.
 
   # The home PVC hides anything the image put under /home/coder, so nothing
   # here may assume a seeded home. Shell config comes from dotfiles or /etc.

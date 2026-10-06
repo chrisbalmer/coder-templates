@@ -108,12 +108,29 @@ resource "kubernetes_manifest" "workspace" {
             image           = local.images[data.coder_parameter.image.value]
             imagePullPolicy = "IfNotPresent"
             command         = ["sh", "-c", coder_agent.main.init_script]
-            env = [{
-              name = "CODER_AGENT_TOKEN"
-              valueFrom = {
-                secretKeyRef = { name = "coder-agent-token", key = "token" }
-              }
-            }]
+            # The CODER_AGENT_EXP_* settings must be here: the agent reads them
+            # from its own process environment (coder_agent.env doesn't reach
+            # it). The agent has no dir, so relative paths resolve to nothing
+            # and the repo's files are listed by absolute path.
+            env = [
+              {
+                name = "CODER_AGENT_TOKEN"
+                valueFrom = {
+                  secretKeyRef = { name = "coder-agent-token", key = "token" }
+                }
+              },
+              {
+                name  = "CODER_AGENT_EXP_MCP_CONFIG_FILES"
+                value = "~/.coder/.mcp.json,${local.workspace_path}/.mcp.json"
+              },
+              {
+                # Replaces Coder's default (~/.coder/skills,.agents/skills),
+                # so the defaults are kept. The first skill with a name wins:
+                # home before the repo.
+                name  = "CODER_AGENT_EXP_SKILLS_DIRS"
+                value = "~/.coder/skills,.agents/skills,~/.agents/skills,${local.workspace_path}/.agents/skills"
+              },
+            ]
             resources = {
               requests = { cpu = "250m", memory = "512Mi" }
               limits = {
