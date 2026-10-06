@@ -41,9 +41,9 @@ the Coder session, shared with the owner only.
 ## Egress
 
 The workspace needs the same egress as `k8s-stack` (DNS, the Coder access URL, the internet),
-except the Kubernetes API server. If the image lacks KasmVNC, the module downloads it from
-`github.com` (release assets on `objects.githubusercontent.com`) and runs `apt-get` against the
-distribution's mirrors on every start.
+except the Kubernetes API server. The images ship KasmVNC, so nothing is downloaded at start.
+With an image that lacks it, the module downloads it from `github.com` and runs `apt-get`
+against the distribution's mirrors on every start.
 
 > [!WARNING]
 > A security lab is still a pod on your cluster. Keep the `k8s-stack` egress fence (no LAN, no

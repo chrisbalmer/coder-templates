@@ -9,8 +9,8 @@ tools. For terminal or VS Code development, use **Linux Stack on Kubernetes** in
 | Ubuntu desktop (default) | `ubuntu-desktop` | 4 CPU / 8 GiB | off |
 | Kali security lab | `kali-desktop` | 4 CPU / 8 GiB | on |
 
-Both run Xfce with passwordless `sudo`. The Ubuntu image also has the CLI tools of the
-headless images (git, Python, uv, kubectl, `gh`). The image can't be changed after the
+Both run Xfce with Firefox and passwordless `sudo`. The Ubuntu image also has the CLI tools
+of the headless images (git, Python, uv, kubectl, `gh`). The image can't be changed after the
 workspace is created. CPU, memory, the repo and **Raw sockets** can.
 
 ## Using the desktop
@@ -40,9 +40,11 @@ The terminal, SSH and port forwarding work as in any Coder workspace (`coder ssh
 The Kali preset is for security learning: CTFs, static malware analysis and tool practice.
 It works well for:
 
-- **Reverse engineering and static analysis** of samples you don't run.
-- **Web, crypto, forensics and pwn challenges** whose targets are on the internet
-  (for example `nc host port` to a CTF server).
+- **Reverse engineering and static analysis** of samples you don't run: Ghidra, radare2,
+  YARA, Python's `pefile`, and Kali's reverse-engineering and forensics tools.
+- **Password, crypto and stego challenges**, with Kali's tools for each.
+- **Web and pwn challenges** whose targets are on the internet: Kali's web and
+  exploitation tools, and `pwntools` (`nc host port` to a CTF server works).
 
 It does **not** support:
 

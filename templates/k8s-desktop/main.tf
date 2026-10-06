@@ -6,8 +6,8 @@ locals {
   # Exact pins, bumped by template release. Built by coder-images
   # (github.com/chrisbalmer/coder-images).
   images = {
-    ubuntu-desktop = "${var.image_registry}/coder-images-ubuntu-desktop:2.2.0"
-    kali-desktop   = "${var.image_registry}/coder-images-kali-desktop:2.1.0"
+    ubuntu-desktop = "${var.image_registry}/coder-images-ubuntu-desktop:2.3.0"
+    kali-desktop   = "${var.image_registry}/coder-images-kali-desktop:2.2.0"
   }
 
   start = data.coder_workspace.me.start_count
@@ -111,9 +111,10 @@ resource "coder_script" "git_identity" {
   EOT
 }
 
-# The desktop. The images ship Xfce; the module configures KasmVNC on
-# localhost and Coder proxies it, so there is no VNC password: access is the
-# Coder session. It installs KasmVNC first if the image lacks it.
+# The desktop. The images ship Xfce and KasmVNC; the module configures
+# KasmVNC on localhost and starts it, and Coder proxies it, so there is no VNC
+# password: access is the Coder session. kasm_version only matters for an
+# image without KasmVNC, which the module would install it into.
 module "kasmvnc" {
   count               = local.start
   source              = "registry.coder.com/coder/kasmvnc/coder"
