@@ -72,7 +72,7 @@ startup log shows which identity is in effect.
 Every start installs **agent skills** (folders with a `SKILL.md` that teach a coding agent a
 workflow) from git repositories your admin chooses. Out of the box that's
 [chrisbalmer/ai-tools](https://github.com/chrisbalmer/ai-tools) and
-[coder/skills](https://github.com/coder/skills), at pinned tags. The "Agent skills" startup log
+[coder/skills](https://github.com/coder/skills), at pinned tags. The "Agent content" startup log
 lists what was installed, and any repository it couldn't reach.
 
 | Agent | Where it finds them |
@@ -91,7 +91,7 @@ lists what was installed, and any repository it couldn't reach.
   installed are overwritten on the next start; copy it under a new name to change it.
 - Coder Agents also reads `~/.coder/skills` and your repository's `.agents/skills`.
 
-**For admins:** the template variable `agent_skill_sources` is a JSON list, passed on every push
+**For admins:** the template variable `agent_content_sources` is a JSON list, passed on every push
 like the other template variables (see `REQUIREMENTS.md`). Each entry has a `name`, a clone
 `url` and a `ref` (a tag or branch), plus two optional fields:
 

@@ -62,7 +62,7 @@ variable "ssh_known_hosts_extra" {
   default     = ""
 }
 
-variable "agent_skill_sources" {
+variable "agent_content_sources" {
   type        = string
   description = <<-EOF
   Git repositories whose agent skills are installed into every workspace on
@@ -82,9 +82,9 @@ variable "agent_skill_sources" {
 
   validation {
     condition = (
-      startswith(trimspace(var.agent_skill_sources), "[") &&
+      startswith(trimspace(var.agent_content_sources), "[") &&
       try(alltrue([
-        for s in jsondecode(var.agent_skill_sources) :
+        for s in jsondecode(var.agent_content_sources) :
         try(
           s.name != "" && s.url != "" && s.ref != "" &&
           !startswith(s.url, "-") && !startswith(s.ref, "-") &&
@@ -93,6 +93,6 @@ variable "agent_skill_sources" {
         )
       ]), false)
     )
-    error_message = "agent_skill_sources must be a JSON list of objects with a non-empty name, url and ref (neither starting with \"-\"), and optional skills and claude_plugin; no other keys."
+    error_message = "agent_content_sources must be a JSON list of objects with a non-empty name, url and ref (neither starting with \"-\"), and optional skills and claude_plugin; no other keys."
   }
 }

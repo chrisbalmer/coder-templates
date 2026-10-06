@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Installs agent skills from git repositories into the workspace. Runs on every
+# Installs agent content (today: skills, and Claude Code plugin marketplaces)
+# from git repositories into the workspace. Runs on every
 # start and is idempotent. See ../README.md for the behaviour in full.
 #
-# Input: AGENT_SKILLS_CONFIG, base64 of
+# Input: AGENT_CONTENT_CONFIG, base64 of
 #   {"managed_settings_dir": "...", "sources": [{name, url, ref, skills, claude_plugin}]}
 #
 # One failing source never stops the others; problems are logged as WARN and
 # the script still exits 0. It exits 1 only when it can't run at all.
 set -uo pipefail
 
-log() { printf '[agent-skills] %s\n' "$*"; }
-warn() { printf '[agent-skills] WARN: %s\n' "$*"; }
+log() { printf '[agent-content] %s\n' "$*"; }
+warn() { printf '[agent-content] WARN: %s\n' "$*"; }
 tilde() { printf '%s' "${1/#"$HOME"/\~}"; }
 first_line() { printf '%s\n' "$1" | sed -n '/[^[:space:]]/{p;q;}'; }
 
@@ -25,19 +26,19 @@ for cmd in git jq base64 cp diff find install; do
   }
 done
 
-CONFIG=$(printf '%s' "${AGENT_SKILLS_CONFIG:-}" | base64 -d 2>/dev/null)
+CONFIG=$(printf '%s' "${AGENT_CONTENT_CONFIG:-}" | base64 -d 2>/dev/null)
 if ! jq -e '.sources | type == "array"' >/dev/null 2>&1 <<<"$CONFIG"; then
-  warn "AGENT_SKILLS_CONFIG is missing or invalid"
+  warn "AGENT_CONTENT_CONFIG is missing or invalid"
   exit 1
 fi
 
-DATA_DIR="$HOME/.local/share/agent-skills"
+DATA_DIR="$HOME/.local/share/agent-content"
 SRC_DIR="$DATA_DIR/src"
 MANIFEST="$DATA_DIR/manifest.json"
 AGENTS_SKILLS="$HOME/.agents/skills"
 CLAUDE_SKILLS="$HOME/.claude/skills"
 MANAGED_DIR=$(jq -r '.managed_settings_dir // "/etc/claude-code/managed-settings.d"' <<<"$CONFIG")
-MANAGED_FILE="$MANAGED_DIR/30-agent-skills.json"
+MANAGED_FILE="$MANAGED_DIR/30-agent-content.json"
 SKILL_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 SOURCE_RE='^[a-z0-9][a-z0-9._-]*$'
 PLUGIN_RE='^[A-Za-z0-9][A-Za-z0-9._-]*$'
@@ -98,11 +99,11 @@ sync_source() {
   local name=$1 url=$2 ref=$3 dir="$SRC_DIR/$1" tmp err cur_url="" cur_ref=""
   if [ -d "$dir/.git" ]; then
     cur_url=$(git -C "$dir" config --get remote.origin.url 2>/dev/null)
-    cur_ref=$(git -C "$dir" config --get agent-skills.ref 2>/dev/null)
+    cur_ref=$(git -C "$dir" config --get agent-content.ref 2>/dev/null)
   fi
   if [ -d "$dir/.git" ] && [ "$cur_url" = "$url" ]; then
     if err=$(checkout_ref "$dir" "$ref"); then
-      git -C "$dir" config agent-skills.ref "$ref"
+      git -C "$dir" config agent-content.ref "$ref"
       return 0
     fi
     warn "$name: can't fetch $ref from $url ($(first_line "$err")); keeping the previous checkout ($cur_ref)"
@@ -112,7 +113,7 @@ sync_source() {
   tmp="$SRC_DIR/.new-$name"
   rm -rf "$tmp"
   if err=$(git init --quiet "$tmp" 2>&1 && git -C "$tmp" remote add -- origin "$url" 2>&1 && checkout_ref "$tmp" "$ref"); then
-    git -C "$tmp" config agent-skills.ref "$ref"
+    git -C "$tmp" config agent-content.ref "$ref"
     rm -rf "$dir" && mv "$tmp" "$dir" && return 0
     warn "$name: can't replace $dir"
   else
@@ -192,7 +193,7 @@ for ((i = 0; i < count; i++)); do
     continue
   fi
   dir="$SRC_DIR/$name"
-  used_ref=$(git -C "$dir" config --get agent-skills.ref 2>/dev/null)
+  used_ref=$(git -C "$dir" config --get agent-content.ref 2>/dev/null)
   commit=$(git -C "$dir" rev-parse --short HEAD 2>/dev/null)
 
   # Claude Code: register the repo's marketplace, or fall back to copying.
@@ -310,13 +311,13 @@ reconcile() {
   local installed=() updated=() removed=() adopted=() unchanged=0 skipped=0
 
   # Leftovers of an interrupted run: finish or undo its swap.
-  for d in "$root"/.agent-skills-new-* "$root"/.agent-skills-old-*; do
+  for d in "$root"/.agent-content-new-* "$root"/.agent-content-old-*; do
     [ -e "$d" ] || continue
     base=${d##*/}
     case $base in
-    .agent-skills-old-*)
-      if [ ! -e "$root/${base#.agent-skills-old-}" ]; then
-        mv "$d" "$root/${base#.agent-skills-old-}" && continue
+    .agent-content-old-*)
+      if [ ! -e "$root/${base#.agent-content-old-}" ]; then
+        mv "$d" "$root/${base#.agent-content-old-}" && continue
       fi
       ;;
     esac
@@ -337,8 +338,8 @@ reconcile() {
           adopted+=("$skill")
           continue
         fi
-        warn "$(tilde "$dest") exists and wasn't installed by agent-skills, so $skill from $src is skipped." \
-          "To get it, remove that folder; if agent-skills did install it, restore .skills.${key}[\"$skill\"] in $(tilde "$MANIFEST")"
+        warn "$(tilde "$dest") exists and wasn't installed by agent-content, so $skill from $src is skipped." \
+          "To get it, remove that folder; if agent-content did install it, restore .skills.${key}[\"$skill\"] in $(tilde "$MANIFEST")"
         skipped=$((skipped + 1))
         continue
       fi
@@ -350,8 +351,8 @@ reconcile() {
       continue
     fi
     mkdir -p "$root"
-    tmp="$root/.agent-skills-new-$skill"
-    old="$root/.agent-skills-old-$skill"
+    tmp="$root/.agent-content-new-$skill"
+    old="$root/.agent-content-old-$skill"
     rm -rf "$tmp" "$old"
     if ! cp -RP "$path" "$tmp" 2>/dev/null; then
       warn "$src: can't copy $skill"

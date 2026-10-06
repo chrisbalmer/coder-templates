@@ -28,8 +28,8 @@ namespaces enforce Pod Security `baseline`, not `restricted`. What a cluster nee
 ### Shared modules
 
 Terraform modules that more than one template can use live in [`modules/`](modules/), for
-example [`agent-skills`](modules/agent-skills/README.md), which installs agent skills from git
-repositories. A template uses one as `source = "./modules/<name>"`. Coder uploads only the
+example [`agent-content`](modules/agent-content/README.md), which installs agent skills and
+Claude Code plugins from git repositories. A template uses one as `source = "./modules/<name>"`. Coder uploads only the
 template's own directory, without symlinks or hidden files, so `scripts/vendor-modules.sh`
 copies `modules/` into every `templates/<name>/modules/` (gitignored). CI runs it before linting
 and before every push; run it yourself before local checks.

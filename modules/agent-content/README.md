@@ -1,14 +1,14 @@
-# agent-skills
+# agent-content
 
-Installs agent skills (directories with a `SKILL.md`) from git
-repositories into a Coder workspace, on every start, for every coding agent in it. It's a
-shared module: templates use it as `./modules/agent-skills` after
+Installs content for coding agents from git repositories into a Coder workspace, on every
+start, for every coding agent in it. Today that's agent skills (directories with a
+`SKILL.md`) and Claude Code plugins; see [Scope](#scope). It's a shared module: templates use it as `./modules/agent-content` after
 `scripts/vendor-modules.sh` has copied the repository's `modules/` into the template.
 
 ```hcl
-module "agent_skills" {
+module "agent_content" {
   count    = data.coder_workspace.me.start_count
-  source   = "./modules/agent-skills"
+  source   = "./modules/agent-content"
   agent_id = coder_agent.main.id
   sources = [
     { name = "coder-skills", url = "https://github.com/coder/skills.git", ref = "v0.2.0" },
@@ -17,13 +17,20 @@ module "agent_skills" {
 }
 ```
 
+## Scope
+
+Today the module installs **skills** for every agent, and enables **Claude Code plugins**, which
+bring their own agents, commands, hooks and MCP servers to Claude Code. Other agents get only the
+skills. Translating a repository's agents, commands and hooks for other agents may come later,
+which is why the module is named for content rather than skills.
+
 ## Inputs
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `agent_id` | string | | The `coder_agent` to run on |
 | `sources` | list(object) | `[]` | Repositories, in priority order (see below) |
-| `display_name` | string | `Agent skills` | Script name in the startup logs |
+| `display_name` | string | `Agent content` | Script name in the startup logs |
 | `icon` | string | `/emojis/1f9f0.png` | Script icon; must be a path coderd serves |
 | `claude_managed_settings_dir` | string | `/etc/claude-code/managed-settings.d` | Claude Code's managed-settings drop-in directory. Override only for tests |
 
@@ -45,7 +52,7 @@ It's one `coder_script` (`run_on_start`, doesn't block login). It needs bash 4.4
 jq, `base64`, `cp`, `diff`, `find` and `install`, and, for Claude Code's settings, passwordless
 `sudo`. For each source, in order:
 
-1. **Fetch.** A shallow fetch of `ref` into `~/.local/share/agent-skills/src/<name>`. A changed
+1. **Fetch.** A shallow fetch of `ref` into `~/.local/share/agent-content/src/<name>`. A changed
    `url` gets a fresh clone; a changed `ref` is fetched and checked out. If the fetch fails, it
    logs a warning and keeps using the previous checkout, if there is one. Git never prompts:
    `GIT_TERMINAL_PROMPT=0`, and SSH uses Coder's `GIT_SSH_COMMAND` (the user's Coder SSH key).
@@ -71,18 +78,18 @@ jq, `base64`, `cp`, `diff`, `find` and `install`, and, for Claude Code's setting
    the marketplace itself, in the background, at the start of a session. Otherwise, the skills
    are also copied to `~/.claude/skills/<name>`.
 
-All the marketplaces go into one file, `<claude_managed_settings_dir>/30-agent-skills.json`,
+All the marketplaces go into one file, `<claude_managed_settings_dir>/30-agent-content.json`,
 installed mode 0644 (with `sudo` when the directory isn't writable), and rewritten only when
 it changes. It's removed when no source has a marketplace. Without sudo, the script warns and
 skips it.
 
 ### Ownership
 
-`~/.local/share/agent-skills/manifest.json` records which entries in `~/.agents/skills` and
+`~/.local/share/agent-content/manifest.json` records which entries in `~/.agents/skills` and
 `~/.claude/skills` the script installed, and from which source and ref. Only those entries are
 updated or removed. The manifest is rewritten atomically after every change, and an entry is
 recorded before its folder is swapped in, so an interrupted run leaves nothing orphaned: the
-next run finishes or undoes a half-done swap (`.agent-skills-new-*`, `.agent-skills-old-*`).
+next run finishes or undoes a half-done swap (`.agent-content-new-*`, `.agent-content-old-*`).
 
 - An owned entry that no source provides any more is removed. Entries from a configured source
   that can't be fetched (and has no previous checkout) are kept.

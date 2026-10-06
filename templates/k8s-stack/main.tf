@@ -170,15 +170,15 @@ module "claude-code" {
   workdir  = local.workspace_path
 }
 
-# Skills from the git repositories in agent_skill_sources, for every coding
+# Skills from the git repositories in agent_content_sources, for every coding
 # agent: copied to ~/.agents/skills, and registered with Claude Code as plugin
 # marketplaces in its managed settings. modules/ is the repo-root modules/
 # directory, copied in by scripts/vendor-modules.sh before init and push.
-module "agent_skills" {
+module "agent_content" {
   count    = local.start
-  source   = "./modules/agent-skills"
+  source   = "./modules/agent-content"
   agent_id = coder_agent.main.id
-  sources  = jsondecode(var.agent_skill_sources)
+  sources  = jsondecode(var.agent_content_sources)
 }
 
 module "vscode-web" {

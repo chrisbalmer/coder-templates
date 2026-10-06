@@ -55,7 +55,7 @@ variable "sources" {
 variable "display_name" {
   type        = string
   description = "Name of the script in the workspace's startup logs."
-  default     = "Agent skills"
+  default     = "Agent content"
 }
 
 variable "icon" {
@@ -68,7 +68,7 @@ variable "claude_managed_settings_dir" {
   type        = string
   description = <<-EOF
   Claude Code's managed-settings drop-in directory. The script writes
-  30-agent-skills.json here, with sudo when the directory isn't writable by the
+  30-agent-content.json here, with sudo when the directory isn't writable by the
   workspace user. Override it only for testing.
   EOF
   default     = "/etc/claude-code/managed-settings.d"

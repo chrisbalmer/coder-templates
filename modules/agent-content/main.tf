@@ -10,12 +10,12 @@ locals {
   # hands it the config in the environment.
   script = <<-EOT
     #!/usr/bin/env bash
-    AGENT_SKILLS_CONFIG='${base64encode(jsonencode(local.config))}' \
-      exec bash -c "$(printf '%s' '${base64encode(file("${path.module}/scripts/run.sh"))}' | base64 -d)" agent-skills
+    AGENT_CONTENT_CONFIG='${base64encode(jsonencode(local.config))}' \
+      exec bash -c "$(printf '%s' '${base64encode(file("${path.module}/scripts/run.sh"))}' | base64 -d)" agent-content
   EOT
 }
 
-resource "coder_script" "agent_skills" {
+resource "coder_script" "agent_content" {
   agent_id           = var.agent_id
   display_name       = var.display_name
   icon               = var.icon
