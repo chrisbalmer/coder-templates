@@ -6,8 +6,8 @@ locals {
   # Exact pins, bumped by template release. Built by coder-images
   # (github.com/chrisbalmer/coder-images).
   images = {
-    ubuntu-desktop = "${var.image_registry}/coder-images-ubuntu-desktop:2.3.0"
-    kali-desktop   = "${var.image_registry}/coder-images-kali-desktop:2.2.0"
+    ubuntu-desktop = "${var.image_registry}/coder-images-ubuntu-desktop:2.3.1"
+    kali-desktop   = "${var.image_registry}/coder-images-kali-desktop:2.3.0"
   }
 
   start = data.coder_workspace.me.start_count
