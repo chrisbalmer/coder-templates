@@ -20,6 +20,7 @@ data "coder_workspace_preset" "general" {
     lab_postgres = "false"
     lab_minio    = "false"
     lab_mysql    = "false"
+    herdr        = "true"
   }
 }
 
@@ -35,6 +36,7 @@ data "coder_workspace_preset" "cortex" {
     lab_postgres = "false"
     lab_minio    = "false"
     lab_mysql    = "false"
+    herdr        = "true"
   }
 }
 
@@ -50,6 +52,7 @@ data "coder_workspace_preset" "infra" {
     lab_postgres = "false"
     lab_minio    = "false"
     lab_mysql    = "false"
+    herdr        = "true"
   }
 }
 
@@ -65,6 +68,7 @@ data "coder_workspace_preset" "go" {
     lab_postgres = "true"
     lab_minio    = "false"
     lab_mysql    = "false"
+    herdr        = "true"
   }
 }
 
@@ -80,5 +84,6 @@ data "coder_workspace_preset" "app" {
     lab_postgres = "true"
     lab_minio    = "true"
     lab_mysql    = "false"
+    herdr        = "true"
   }
 }

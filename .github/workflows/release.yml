@@ -36,6 +36,8 @@ env:
   CODER_VERSION: v2.38.0
   YQ_VERSION: v4.53.6
   YQ_SHA256: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
+  SHELLCHECK_VERSION: v0.11.0
+  SHELLCHECK_SHA256: b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6
 
 jobs:
   lint:
@@ -43,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install terraform, tflint and yq
+      - name: Install terraform, tflint, yq and shellcheck
         run: |
           set -euo pipefail
           cd /tmp
@@ -56,7 +58,11 @@ jobs:
           unzip -o -q tf.zip -d /usr/local/bin
           unzip -o -q tflint.zip -d /usr/local/bin
           install -m 0755 yq /usr/local/bin/yq
-          terraform version && tflint --version && yq --version
+          curl -fsSL -o shellcheck.tar.gz "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.gz"
+          echo "${SHELLCHECK_SHA256}  shellcheck.tar.gz" | sha256sum -c -
+          tar -xzf shellcheck.tar.gz
+          install -m 0755 "shellcheck-${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
+          terraform version && tflint --version && yq --version && shellcheck --version
 
       # Shared modules live in modules/ and are copied into each template, which
       # uses them as ./modules/<name>; see the script.
@@ -83,6 +89,22 @@ jobs:
           set -euo pipefail
           tflint --init --config "$PWD/.tflint.hcl"
           for d in modules/*/ templates/*/; do tflint --config "$PWD/.tflint.hcl" --chdir "$d"; done
+
+      - name: shellcheck
+        run: shellcheck scripts/*.sh modules/*/scripts/*.sh
+
+      - name: Module tests
+        # terraform test for each shared module that has tests/, with a mocked
+        # coder provider; then the herdr script against real release downloads.
+        run: |
+          set -euo pipefail
+          for d in modules/*/; do
+            [ -d "${d}tests" ] || continue
+            echo "::group::$d"
+            (cd "$d" && terraform init -backend=false -input=false && terraform test)
+            echo "::endgroup::"
+          done
+          ./scripts/test-herdr-module.sh
 
       - name: template.yaml
         run: |

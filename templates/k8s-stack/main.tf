@@ -181,6 +181,15 @@ module "agent_content" {
   sources  = jsondecode(var.agent_content_sources)
 }
 
+# herdr, pinned and checksum-verified, with its Claude Code integration so
+# agent panes resume after a stop. Shared module; see modules/herdr.
+module "herdr" {
+  count    = data.coder_parameter.herdr.value == "true" ? local.start : 0
+  source   = "./modules/herdr"
+  agent_id = coder_agent.main.id
+  workdir  = local.workspace_path
+}
+
 module "vscode-web" {
   count          = local.start
   source         = "registry.coder.com/coder/vscode-web/coder"

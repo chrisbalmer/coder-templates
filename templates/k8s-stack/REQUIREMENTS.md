@@ -118,6 +118,7 @@ Workspace pods need:
 | High UDP ports to private ranges | Optional: direct Coder connections (otherwise the relay is used) |
 | Your forge's SSH port | Optional: `git` over SSH to a self-hosted forge. Allow just that host and port, and add its host key with the template variable `ssh_known_hosts_extra` (GitHub's keys are built in) |
 | The hosts in `agent_content_sources` | Every start clones them (HTTPS, or SSH for SSH URLs), and Claude Code clones its plugin marketplaces from the same URLs. The default sources are on `github.com` |
+| `github.com` release downloads | With `herdr` on, the first start (and each herdr version bump) downloads the herdr binary from GitHub releases, which redirect to `release-assets.githubusercontent.com` |
 
 Recommended denies: other namespaces (so one workspace can't reach another's databases), cluster services, and your LAN. The reference setup does this with a Cilium clusterwide policy selecting `coder.io/tenant=true` namespaces, plus the tenancy controller's same-namespace NetworkPolicy for traffic to the labs.
 

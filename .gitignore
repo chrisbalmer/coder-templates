@@ -3,3 +3,4 @@
 *.tfstate.*
 .DS_Store
 templates/*/modules/
+modules/*/.terraform.lock.hcl
