@@ -120,6 +120,6 @@ terraform validate
 tflint --config ../../.tflint.hcl
 ```
 
-CI pins Terraform 1.15.5, the version Coder 2.37.3's provisioner ships. When adding a
+CI pins Terraform 1.16.2, the version Coder 2.38.0's provisioner ships. When adding a
 provider, refresh the lock file for both platforms:
 `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64`.

@@ -1,5 +1,5 @@
 terraform {
-  # CI pins Terraform 1.15.5, the version Coder 2.37.3's provisioner ships.
+  # CI pins Terraform 1.16.2, the version Coder 2.38.0's provisioner ships.
   required_version = ">= 1.15"
 
   required_providers {

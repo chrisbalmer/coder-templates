@@ -27,13 +27,13 @@ on:
 
 env:
   CHECKPOINT_DISABLE: "1"
-  # Match the provisioner (coder-provisioner 2.37.3 ships Terraform 1.15.5).
-  TF_VERSION: 1.15.5
-  TF_SHA256: 702b2136af6728c8ff037f843dd2dbce2b7ad88786b7381d1d72aefa250f601c
+  # Match the provisioner (coder-provisioner 2.38.0 ships Terraform 1.16.2).
+  TF_VERSION: 1.16.2
+  TF_SHA256: 0d17011f0c4664539b164b044903d04e296c86c13cb9f28040076c65cfb3985a
   TFLINT_VERSION: v0.64.0
   TFLINT_SHA256: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
   # Icons are checked against this Coder version's bundled set when CODER_URL is unset.
-  CODER_VERSION: v2.37.3
+  CODER_VERSION: v2.38.0
   YQ_VERSION: v4.53.6
   YQ_SHA256: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
 
