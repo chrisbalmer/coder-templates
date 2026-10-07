@@ -104,6 +104,28 @@ data "coder_parameter" "repo" {
   order        = 5
 }
 
+data "coder_parameter" "herdr" {
+  name         = "herdr"
+  display_name = "herdr"
+  description  = "Installs herdr, a terminal multiplexer for coding agents, with a Herdr app. Its panes come back after a stop, and Claude Code resumes its conversations."
+  type         = "bool"
+  default      = "true"
+  mutable      = true
+  icon         = "/emojis/1f411.png"
+  order        = 6
+}
+
+data "coder_parameter" "herdr_server" {
+  name         = "herdr_server"
+  display_name = "herdr: start on boot"
+  description  = "Starts herdr's server on every workspace start, so your panes and Claude Code sessions are back before you open herdr. Needs herdr on."
+  type         = "bool"
+  default      = "false"
+  mutable      = true
+  icon         = "/emojis/1f411.png"
+  order        = 7
+}
+
 data "coder_parameter" "lab_postgres" {
   name         = "lab_postgres"
   display_name = "Lab: PostgreSQL"

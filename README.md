@@ -29,10 +29,16 @@ namespaces enforce Pod Security `baseline`, not `restricted`. What a cluster nee
 
 Terraform modules that more than one template can use live in [`modules/`](modules/), for
 example [`agent-content`](modules/agent-content/README.md), which installs agent skills and
-Claude Code plugins from git repositories. A template uses one as `source = "./modules/<name>"`. Coder uploads only the
+Claude Code plugins from git repositories, and [`herdr`](modules/herdr/README.md), which installs
+a pinned [herdr](https://herdr.dev) with its agent integrations. A template uses one as `source = "./modules/<name>"`. Coder uploads only the
 template's own directory, without symlinks or hidden files, so `scripts/vendor-modules.sh`
 copies `modules/` into every `templates/<name>/modules/` (gitignored). CI runs it before linting
 and before every push; run it yourself before local checks.
+
+Other repositories can use a module straight from git, at a module tag
+(`modules/<name>/vX.Y.Z`; these don't match the `*-v*` release trigger):
+`source = "git::https://github.com/chrisbalmer/coder-templates.git//modules/<name>?ref=modules/<name>/vX.Y.Z"`.
+A module with a `tests/` directory has `terraform test` tests, which CI runs.
 
 Backing up workspace homes, with example Kasten K10 policies and a restore procedure, is covered in
 [`docs/backups/`](docs/backups/README.md).

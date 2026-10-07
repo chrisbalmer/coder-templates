@@ -17,7 +17,7 @@ Every image has git, Python and uv, kubectl, sudo, the lab clients (`psql`,
 `mysql`, and the MinIO client `mc`), and the GitHub, Gitea and Forgejo CLIs
 (`gh`, `tea`, `fj`), the Gitea/Forgejo MCP server `gitea-mcp` (installed, not configured), plus `nc`
 for network checks. The image can't be changed after the workspace
-is created. CPU, memory, disk size, the repo and the lab toggles can.
+is created. CPU, memory, disk size, the repo, the lab toggles and the herdr settings can.
 
 ## Lab services
 
@@ -141,6 +141,34 @@ In this repository's `CODER_TEMPLATE_VARIABLES` it can also be written as a YAML
 passes on as JSON. An SSH URL is cloned with each user's Coder SSH key, so every user needs that
 key (`coder publickey`) added to their account on the forge. Claude Code clones a plugin
 repository the same way.
+
+## herdr
+
+[herdr](https://herdr.dev) is a terminal multiplexer for coding agents. Each agent gets a pane, and
+a sidebar shows which ones are working, blocked or done. Every preset turns it on. It's the
+`herdr` setting, which presets hide until you choose to show their settings, and you can turn it
+off in the workspace settings.
+
+- Open the **Herdr** app, or run `herdr` in any terminal. `ctrl+b q` detaches; the panes keep
+  running, and `herdr` reattaches.
+- **After a stop**, the panes are gone with the container. Run `herdr` again: it restores the
+  layout from `~/.config/herdr`, and Claude Code panes resume their conversations. herdr's Claude
+  Code hook makes the resume possible; the template installs it into `~/.claude` on every start.
+- The template pins herdr's version and puts it back on every start, so `herdr update` lasts
+  only until the next start. Turn off herdr's update notice in `~/.config/herdr/config.toml`
+  (ideally in your dotfiles):
+
+  ```toml
+  [update]
+  version_check = false
+  ```
+
+- Coding agents get herdr's skill in `~/.agents/skills/herdr` and `~/.claude/skills/herdr`, so
+  they can drive herdr when you ask them to.
+- **herdr: start on boot** (`herdr_server`, off by default, hidden by presets like `herdr`)
+  starts herdr's server on every workspace start. Your panes are restored, and Claude Code
+  sessions resumed, before you open herdr. Without it, they come back when you first open it.
+  Restored agents keep running and use memory, but use no tokens until you prompt them.
 
 ## Kubernetes access
 
