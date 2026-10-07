@@ -106,8 +106,10 @@ resource "kubernetes_manifest" "workspace" {
             # Lets every group open ICMP echo (datagram) sockets, so ping works
             # without NET_RAW: Kali's iputils has no file capability, and the
             # pod default only allows group 65534. A Kubernetes "safe" sysctl,
-            # scoped to the pod's own network namespace.
-            sysctls = [{ name = "net.ipv4.ping_group_range", value = "0 2147483647" }]
+            # scoped to the pod's own network namespace. The range must stay
+            # within the user namespace's mapped GIDs (0-65535 with
+            # hostUsers: false); a wider one makes runc fail the pod sandbox.
+            sysctls = [{ name = "net.ipv4.ping_group_range", value = "0 65535" }]
           }
           containers = [{
             name            = "dev"
