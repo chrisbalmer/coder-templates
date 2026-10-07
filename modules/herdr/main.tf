@@ -11,8 +11,12 @@ locals {
   }
   checksums = length(var.checksums) > 0 ? var.checksums : lookup(local.builtin_checksums, var.herdr_version, {})
 
-  # Every value below is validated to a shell-safe character set, so plain
-  # single quotes are enough. run.sh is a plain bash script (checked by
+  # This script's coder exp sync unit, so other scripts can wait for it.
+  sync_unit = "${var.slug}-script"
+
+  # Every value below but HERDR_WORKDIR is validated to a shell-safe
+  # character set, so plain single quotes are enough; HERDR_WORKDIR has its
+  # single quotes escaped. run.sh is a plain bash script (checked by
   # shellcheck as is); the wrapper hands it the settings in the environment.
   script = <<-EOT
     #!/usr/bin/env bash
@@ -21,6 +25,10 @@ locals {
     HERDR_INSTALL='${var.install}' \
     HERDR_INTEGRATIONS='${join(" ", var.integrations)}' \
     HERDR_SKILL='${var.install_skill}' \
+    HERDR_SYNC_UNIT='${local.sync_unit}' \
+    HERDR_WAIT_FOR='${join(" ", var.wait_for_scripts)}' \
+    HERDR_START_SERVER='${var.start_server}' \
+    HERDR_WORKDIR='${var.workdir != null ? replace(coalesce(var.workdir, "/"), "'", "'\\''") : ""}' \
       exec bash -c "$(printf '%s' '${base64encode(file("${path.module}/scripts/run.sh"))}' | base64 -d)" herdr
   EOT
 

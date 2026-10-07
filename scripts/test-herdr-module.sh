@@ -5,8 +5,18 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 run_sh="$root/modules/herdr/scripts/run.sh"
+# Short, because herdr's server socket lives under the test homes and a Unix
+# socket path is limited to about 104 bytes.
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+# shellcheck disable=SC2329 # called by the trap
+cleanup() {
+  # Only the test server, by its own HOME; never a herdr the caller runs.
+  if [ -x "$work/h9/.local/bin/herdr" ]; then
+    env -i PATH=/usr/bin:/bin HOME="$work/h9" "$work/h9/.local/bin/herdr" server stop >/dev/null 2>&1 || true
+  fi
+  rm -rf "$work"
+}
+trap cleanup EXIT
 
 case "$(uname -s)-$(uname -m)" in
 Linux-x86_64) plat=linux-x86_64 ;;
@@ -34,6 +44,7 @@ run() {
   env -i PATH="/usr/bin:/bin:/usr/sbin:/sbin" HOME="$home" \
     HERDR_VERSION="$version" HERDR_CHECKSUMS="$plat=$sum" HERDR_INSTALL=true \
     HERDR_INTEGRATIONS=claude HERDR_SKILL=true HERDR_INTEGRATION_WAIT=0 \
+    HERDR_SYNC_UNIT=herdr-script HERDR_START_SERVER=false \
     "$@" bash "$run_sh" >"$log" 2>&1
 }
 
@@ -97,6 +108,40 @@ if run "$h6" "$work/7.log" HERDR_INSTALL=false; then
 else
   echo "ok   install=false without herdr exits 1"
 fi
+
+# 7. Ordering: with the coder CLI, wait for the given units and report done.
+shim="$work/shim"
+mkdir -p "$shim"
+printf '#!/bin/sh\necho "$*" >>"%s"\n' "$work/coder.calls" >"$shim/coder"
+chmod +x "$shim/coder"
+check "ordering run exits 0" run "$h1" "$work/8.log" HERDR_WAIT_FOR="coder-claude-code-install_script other" PATH="$shim:/usr/bin:/bin"
+check "ordering: declares the wait" grep -qx "exp sync want herdr-script coder-claude-code-install_script other" "$work/coder.calls"
+check "ordering: waits" grep -qx "exp sync start herdr-script --timeout 10m" "$work/coder.calls"
+check "ordering: reports done" grep -qx "exp sync complete herdr-script" "$work/coder.calls"
+check "ordering: want before start before complete" test "$(cut -d' ' -f3 "$work/coder.calls" | tr '\n' ' ')" = "want start complete "
+
+# 8. An installed agent without its config directory: created, integration in.
+h8="$work/h8"
+mkdir -p "$h8/.local/bin"
+cp "$h1/.local/bin/herdr" "$h8/.local/bin/herdr"
+printf '#!/bin/sh\nexit 0\n' >"$h8/.local/bin/claude"
+chmod +x "$h8/.local/bin/claude"
+check "claude without ~/.claude exits 0" run "$h8" "$work/9.log"
+check "claude without ~/.claude: created" grep -q "created ~/.claude for claude" "$work/9.log"
+check "claude without ~/.claude: hook installed" test -x "$h8/.claude/hooks/herdr-agent-state.sh"
+check "claude without ~/.claude: skill there too" test -f "$h8/.claude/skills/herdr/SKILL.md"
+
+# 9. start_server: starts the headless server, and leaves a running one alone.
+h9="$work/h9"
+mkdir -p "$h9/.local/bin" "$h9/proj"
+cp "$h1/.local/bin/herdr" "$h9/.local/bin/herdr"
+srv() { env -i PATH=/usr/bin:/bin HOME="$h9" "$h9/.local/bin/herdr" "$@"; }
+check "server run exits 0" run "$h9" "$work/10.log" HERDR_START_SERVER=true HERDR_WORKDIR="$h9/proj" HERDR_INTEGRATIONS=
+check "server: started" grep -q "server started in ~/proj" "$work/10.log"
+check "server: running" bash -c "$(declare -f srv); h9='$h9'; [[ \$(srv status server) == *'status: running'* ]]"
+check "server: second run exits 0" run "$h9" "$work/11.log" HERDR_START_SERVER=true HERDR_INTEGRATIONS=
+check "server: second run leaves it alone" grep -q "server is already running" "$work/11.log"
+srv server stop >/dev/null 2>&1 || true
 
 if [ "$fail" != 0 ]; then
   for f in "$work"/*.log; do echo "--- $(basename "$f")" && cat "$f"; done

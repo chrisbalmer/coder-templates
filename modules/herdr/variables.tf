@@ -52,6 +52,27 @@ variable "integrations" {
   }
 }
 
+variable "wait_for_scripts" {
+  type        = list(string)
+  description = <<-EOF
+  coder exp sync unit names to wait for before the script runs, such as the
+  claude-code module's scripts output. The agents need to be installed before
+  herdr's integrations and a started server can use them.
+  EOF
+  default     = []
+
+  validation {
+    condition     = alltrue([for u in var.wait_for_scripts : can(regex("^[A-Za-z0-9._-]+$", u))])
+    error_message = "Unit names are letters, digits, '.', '_' and '-'."
+  }
+}
+
+variable "start_server" {
+  type        = bool
+  description = "Start herdr's headless server on every workspace start, so the saved layout is restored, and agents resumed, before anyone opens herdr."
+  default     = false
+}
+
 variable "install_skill" {
   type        = bool
   description = "Write herdr's agent skill (herdr --skill) to ~/.agents/skills/herdr and ~/.claude/skills/herdr."
@@ -89,8 +110,13 @@ variable "icon" {
 
 variable "slug" {
   type        = string
-  description = "Slug of the app."
+  description = "Slug of the app. Also names the script's coder exp sync unit, <slug>-script."
   default     = "herdr"
+
+  validation {
+    condition     = can(regex("^[a-z0-9](-?[a-z0-9])*$", var.slug))
+    error_message = "slug must be lowercase letters and digits, with single dashes between them."
+  }
 }
 
 variable "order" {

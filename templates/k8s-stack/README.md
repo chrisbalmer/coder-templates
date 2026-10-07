@@ -17,7 +17,7 @@ Every image has git, Python and uv, kubectl, sudo, the lab clients (`psql`,
 `mysql`, and the MinIO client `mc`), and the GitHub, Gitea and Forgejo CLIs
 (`gh`, `tea`, `fj`), the Gitea/Forgejo MCP server `gitea-mcp` (installed, not configured), plus `nc`
 for network checks. The image can't be changed after the workspace
-is created. CPU, memory, disk size, the repo, the lab toggles and herdr can.
+is created. CPU, memory, disk size, the repo, the lab toggles and the herdr settings can.
 
 ## Lab services
 
@@ -165,6 +165,10 @@ off in the workspace settings.
 
 - Coding agents get herdr's skill in `~/.agents/skills/herdr` and `~/.claude/skills/herdr`, so
   they can drive herdr when you ask them to.
+- **herdr: start on boot** (`herdr_server`, off by default, hidden by presets like `herdr`)
+  starts herdr's server on every workspace start. Your panes are restored, and Claude Code
+  sessions resumed, before you open herdr. Without it, they come back when you first open it.
+  Restored agents keep running and use memory, but use no tokens until you prompt them.
 
 ## Kubernetes access
 

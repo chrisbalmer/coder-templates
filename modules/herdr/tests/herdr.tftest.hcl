@@ -30,6 +30,38 @@ run "defaults" {
     condition     = length(coder_app.herdr) == 1 && coder_app.herdr[0].slug == "herdr"
     error_message = "the app is missing"
   }
+  assert {
+    condition     = strcontains(output.script, "HERDR_START_SERVER='false'") && strcontains(output.script, "HERDR_WAIT_FOR=''")
+    error_message = "server or ordering on by default"
+  }
+  assert {
+    condition     = output.scripts == ["herdr-script"] && strcontains(output.script, "HERDR_SYNC_UNIT='herdr-script'")
+    error_message = "sync unit isn't herdr-script"
+  }
+}
+
+run "ordering_and_server" {
+  command = plan
+
+  variables {
+    wait_for_scripts = ["coder-claude-code-pre_install_script", "coder-claude-code-install_script"]
+    start_server     = true
+    workdir          = "/home/coder/repo"
+    slug             = "agents"
+  }
+
+  assert {
+    condition     = strcontains(output.script, "HERDR_WAIT_FOR='coder-claude-code-pre_install_script coder-claude-code-install_script'")
+    error_message = "wait_for_scripts not passed"
+  }
+  assert {
+    condition     = strcontains(output.script, "HERDR_START_SERVER='true'") && strcontains(output.script, "HERDR_WORKDIR='/home/coder/repo'")
+    error_message = "start_server or workdir not passed"
+  }
+  assert {
+    condition     = output.scripts == ["agents-script"]
+    error_message = "sync unit doesn't follow the slug"
+  }
 }
 
 run "workdir_is_quoted" {
@@ -42,6 +74,10 @@ run "workdir_is_quoted" {
   assert {
     condition     = strcontains(output.app_command, "cd '/home/coder/it'\\''s here' 2>/dev/null; ")
     error_message = "workdir is not single-quoted: ${output.app_command}"
+  }
+  assert {
+    condition     = strcontains(output.script, "HERDR_WORKDIR='/home/coder/it'\\''s here'")
+    error_message = "HERDR_WORKDIR is not single-quoted"
   }
 }
 
@@ -97,6 +133,26 @@ run "bad_integration_name" {
   }
 
   expect_failures = [var.integrations]
+}
+
+run "bad_wait_for_unit" {
+  command = plan
+
+  variables {
+    wait_for_scripts = ["install; reboot"]
+  }
+
+  expect_failures = [var.wait_for_scripts]
+}
+
+run "bad_slug" {
+  command = plan
+
+  variables {
+    slug = "Herdr App"
+  }
+
+  expect_failures = [var.slug]
 }
 
 run "relative_workdir" {

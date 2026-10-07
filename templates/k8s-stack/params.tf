@@ -115,6 +115,17 @@ data "coder_parameter" "herdr" {
   order        = 6
 }
 
+data "coder_parameter" "herdr_server" {
+  name         = "herdr_server"
+  display_name = "herdr: start on boot"
+  description  = "Starts herdr's server on every workspace start, so your panes and Claude Code sessions are back before you open herdr. Needs herdr on."
+  type         = "bool"
+  default      = "false"
+  mutable      = true
+  icon         = "/emojis/1f411.png"
+  order        = 7
+}
+
 data "coder_parameter" "lab_postgres" {
   name         = "lab_postgres"
   display_name = "Lab: PostgreSQL"
