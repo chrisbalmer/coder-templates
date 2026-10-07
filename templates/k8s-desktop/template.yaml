@@ -1,6 +1,11 @@
-# Template metadata, applied by CI (coder templates edit) after every push.
+# Template metadata, applied by CI (coder templates edit) on a final release,
+# or on the push that creates the template.
 # Coder limits the description to under 128 bytes; CI checks it.
 name: k8s-desktop
 display_name: Linux Desktop on Kubernetes
 icon: /icon/desktop.svg
 description: Linux GUI desktop in the browser (KasmVNC). Presets for Ubuntu, and Kali for security labs. Not for headless dev work.
+# Autostop, as Go durations; CI applies them with coder templates edit
+# (--default-ttl, --activity-bump). Users can still change their own schedule.
+default_ttl: 8h
+activity_bump: 1h

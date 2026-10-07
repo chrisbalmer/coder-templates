@@ -92,6 +92,23 @@ directory name, a `README.md` (the Docs tab, for users) and a `REQUIREMENTS.md` 
 cluster needs, for admins). CI enforces all four, and rejects names that are Coder
 template-page names (see above). The first `<name>-vX.Y.Z` tag creates the template in Coder.
 
+### template.yaml
+
+| Field | Applied as | Rule |
+|---|---|---|
+| `name` | the template's name | Equals the directory name; not a template-page name |
+| `display_name` | `--display-name` | Required |
+| `description` | `--description` | Required, under 128 bytes. Coder AI picks a template by it |
+| `icon` | `--icon` | A path Coder serves, such as `/icon/k8s.png` |
+| `default_ttl` | `--default-ttl` | Go duration, more than zero (`8h`). Coder's "Default autostop": new workspaces stop this long after they start |
+| `activity_bump` | `--activity-bump` | Go duration (`1h`). Activity pushes the stop time back to at least this far away |
+
+CI applies them with `coder templates edit` on a final release, or on the push that creates the
+template. Settings not listed (autostop requirement, autostart, dormancy, failure cleanup,
+whether users may change their own schedule) aren't passed, so `coder templates edit` keeps
+whatever is set in Coder. A new `default_ttl` applies to workspaces created after it; while users
+may set their own schedule, an existing workspace keeps the one it has.
+
 ## Local checks
 
 ```bash
@@ -103,6 +120,6 @@ terraform validate
 tflint --config ../../.tflint.hcl
 ```
 
-CI pins Terraform 1.15.5, the version Coder 2.37.3's provisioner ships. When adding a
+CI pins Terraform 1.16.2, the version Coder 2.38.0's provisioner ships. When adding a
 provider, refresh the lock file for both platforms:
 `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64`.

@@ -51,6 +51,26 @@ minute).
 Install tools with `sudo apt-get install`, or into your home directory. Changes
 outside `/home/coder` are lost when the workspace stops.
 
+## Autostop
+
+A workspace stops **8 hours after it starts**. While you're using it, each bit of activity
+pushes the stop time back to at least an hour away: a terminal, SSH or VS Code session, a
+port forward, or an app opened through Coder.
+
+Background work with nothing connected, such as a detached coding agent or a build left
+running after you disconnect, **doesn't count as activity**, so the workspace can stop
+underneath it. Your home directory is kept when it stops (see **What survives**).
+
+To change the schedule, open the workspace's **Settings → Schedule**, or use the CLI:
+
+- `coder schedule stop <workspace> 12h` sets how long it runs after each start
+  (`manual` turns autostop off). It takes effect from the next start.
+- `coder schedule extend <workspace> 2h` moves the current stop time to 2 hours from now.
+- `coder schedule show <workspace>` shows the schedule.
+
+A workspace created before the template had this schedule keeps the one it had, which may
+be none: check it with `coder schedule show`.
+
 ## Dotfiles
 
 The **Dotfiles URL** setting is applied with `coder dotfiles` on every start, so changes to your

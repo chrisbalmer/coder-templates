@@ -27,13 +27,13 @@ on:
 
 env:
   CHECKPOINT_DISABLE: "1"
-  # Match the provisioner (coder-provisioner 2.37.3 ships Terraform 1.15.5).
-  TF_VERSION: 1.15.5
-  TF_SHA256: 702b2136af6728c8ff037f843dd2dbce2b7ad88786b7381d1d72aefa250f601c
+  # Match the provisioner (coder-provisioner 2.38.0 ships Terraform 1.16.2).
+  TF_VERSION: 1.16.2
+  TF_SHA256: 0d17011f0c4664539b164b044903d04e296c86c13cb9f28040076c65cfb3985a
   TFLINT_VERSION: v0.64.0
   TFLINT_SHA256: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
   # Icons are checked against this Coder version's bundled set when CODER_URL is unset.
-  CODER_VERSION: v2.37.3
+  CODER_VERSION: v2.38.0
   YQ_VERSION: v4.53.6
   YQ_SHA256: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
 
@@ -90,8 +90,16 @@ jobs:
           fail=0
           for d in templates/*/; do
             dir=$(basename "$d"); f="$d/template.yaml"
-            for k in name display_name icon description; do
+            for k in name display_name icon description default_ttl activity_bump; do
               [ -n "$(yq -r ".$k // \"\"" "$f")" ] || { echo "::error::$f: $k is empty"; fail=1; }
+            done
+            # Autostop, passed to coder templates edit as Go durations. A zero
+            # default_ttl would leave workspaces running until stopped by hand.
+            for k in default_ttl activity_bump; do
+              v=$(yq -r ".$k // \"\"" "$f")
+              [ -n "$v" ] || continue # reported above
+              [[ "$v" =~ ^([0-9]+(h|m|s))+$ ]] || { echo "::error::$f: $k \"$v\" isn't a duration like 8h or 1h30m"; fail=1; continue; }
+              [ "$k" != default_ttl ] || [[ "$v" =~ [1-9] ]] || { echo "::error::$f: default_ttl must be more than zero"; fail=1; }
             done
             # The release tag names the directory, and the push uses .name,
             # so the two must agree.
@@ -221,6 +229,9 @@ jobs:
             "${vars_args[@]}" \
             --yes
 
+      # coder templates edit re-sends the template's current value for every
+      # flag not given here (autostop requirement, autostart, dormancy, failure
+      # TTL, allow-user-*), so only these fields change.
       - name: Apply template metadata
         if: steps.push.outputs.metadata == 'true'
         env:
@@ -232,4 +243,6 @@ jobs:
             --display-name "$(yq -r .display_name "$f")" \
             --description "$(yq -r .description "$f")" \
             --icon "$(yq -r .icon "$f")" \
+            --default-ttl "$(yq -r .default_ttl "$f")" \
+            --activity-bump "$(yq -r .activity_bump "$f")" \
             --yes
