@@ -22,6 +22,7 @@ ServiceAccount, Role or lab resources, and the pod mounts **no** Kubernetes API 
 | Provisioner rights | `admin` plus the three lab operators' API groups | `admin` is enough; no lab API groups needed |
 | Kubernetes API from the workspace | Workspace ServiceAccount, egress to the API server on 6443 | None: `automountServiceAccountToken: false`, so no API egress is needed |
 | Capabilities | Drops `NET_RAW` and `MKNOD` | Drops `MKNOD`; drops `NET_RAW` unless the user turns on **Raw sockets** (on in the Kali preset). `NET_RAW` is in the default set that `baseline` allows, and with `hostUsers: false` it only reaches the pod's own network namespace |
+| Pod sysctls | None | `net.ipv4.ping_group_range = 0 2147483647`, so `ping` works without `NET_RAW`. It's a Kubernetes *safe* sysctl: PSA `baseline` allows it and the kubelet accepts it by default, scoped to the pod's own network namespace |
 | `/dev/shm` | Runtime default (64 MiB) | 1 GiB memory-backed `emptyDir`, counted against the memory limit |
 | Requests | 250m CPU, 512 MiB | 500m CPU, 1 GiB |
 | Quota (largest workspace) | 8 CPU, 16 GiB plus labs | 8 CPU, 16 GiB, one PVC (up to 100 GiB) |

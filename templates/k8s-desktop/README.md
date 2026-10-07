@@ -84,9 +84,10 @@ It does **not** support:
 
 ### Raw sockets
 
-**Raw sockets** keeps the `NET_RAW` capability, so `nmap -sS`, `tcpdump`, `scapy` and `ping`
-work. It's on in the Kali preset and off in the Ubuntu preset; change it in the workspace
-settings and restart. It only reaches the workspace's own network interface, and the
+**Raw sockets** keeps the `NET_RAW` capability for tools that build their own packets, such as
+`nmap -sS`, `tcpdump` and `scapy`; run them with `sudo`. It's on in the Kali preset and off in
+the Ubuntu preset; change it in the workspace settings and restart. `ping` works on Kali without
+it or `sudo`. The Ubuntu image has no usable `ping`; use `curl` or `nc` to test reachability. It only reaches the workspace's own network interface, and the
 network policy still applies.
 
 ## Dotfiles
