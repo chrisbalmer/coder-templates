@@ -35,6 +35,26 @@ The terminal, SSH and port forwarding work as in any Coder workspace (`coder ssh
 - **Backups:** the template backs nothing up. Your home directory is protected only if your
   administrator backs up the `home` volume. Push work you care about.
 
+## Autostop
+
+A workspace stops **8 hours after it starts**. While you're using it, each bit of activity
+pushes the stop time back to at least an hour away: an open KasmVNC tab, a terminal or SSH
+session, or a port forward.
+
+Background work with nothing connected, such as a detached coding agent or a build left
+running after you disconnect, **doesn't count as activity**, so the workspace can stop
+underneath it. Your home directory is kept when it stops (see **What survives**).
+
+To change the schedule, open the workspace's **Settings → Schedule**, or use the CLI:
+
+- `coder schedule stop <workspace> 12h` sets how long it runs after each start
+  (`manual` turns autostop off). It takes effect from the next start.
+- `coder schedule extend <workspace> 2h` moves the current stop time to 2 hours from now.
+- `coder schedule show <workspace>` shows the schedule.
+
+A workspace created before the template had this schedule keeps the one it had, which may
+be none: check it with `coder schedule show`.
+
 ## Kali security lab
 
 The Kali preset is for security learning: CTFs, static malware analysis and tool practice.
