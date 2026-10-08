@@ -17,7 +17,7 @@ Every image has git, Python and uv, kubectl, sudo, the lab clients (`psql`,
 `mysql`, and the MinIO client `mc`), and the GitHub, Gitea and Forgejo CLIs
 (`gh`, `tea`, `fj`), the Gitea/Forgejo MCP server `gitea-mcp` (installed, not configured), plus `nc`
 for network checks. The image can't be changed after the workspace
-is created. CPU, memory, disk size, the repo, the lab toggles and the herdr settings can.
+is created. CPU, memory, disk size, the repo, the lab toggles, the herdr settings and the CLI login can.
 
 ## Lab services
 
@@ -169,6 +169,17 @@ off in the workspace settings.
   starts herdr's server on every workspace start. Your panes are restored, and Claude Code
   sessions resumed, before you open herdr. Without it, they come back when you first open it.
   Restored agents keep running and use memory, but use no tokens until you prompt them.
+
+## The coder CLI
+
+The `coder` CLI is installed in the workspace but not logged in. **Log in the coder CLI**
+(`coder_login`, off by default, changeable any time) puts a Coder session token for your
+account in the workspace's environment (`CODER_SESSION_TOKEN`, with `CODER_URL`), so commands
+like `coder list` or `coder ssh <other workspace>` work straight away. The token can do anything
+your account can, and every process in the workspace can read it, AI agents included. A new one
+is made on every start and deleted when the workspace stops. Leave it off unless you use the CLI
+here often. Otherwise run `coder login` when you need it: that token stays in the CLI's config
+instead of the environment.
 
 ## Kubernetes access
 

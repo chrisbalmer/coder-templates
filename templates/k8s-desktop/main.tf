@@ -143,8 +143,11 @@ module "dotfiles" {
   default_dotfiles_uri = replace(var.default_dotfiles_uri, "{username}", data.coder_workspace_owner.me.name)
 }
 
+# Off by default: the token is a full-scope API key for the owner, readable by
+# every process in the workspace. Coder makes one on every start either way;
+# this only puts it in the environment.
 module "coder-login" {
-  count    = local.start
+  count    = data.coder_parameter.coder_login.value == "true" ? local.start : 0
   source   = "registry.coder.com/coder/coder-login/coder"
   version  = "1.1.1"
   agent_id = coder_agent.main.id

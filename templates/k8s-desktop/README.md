@@ -11,7 +11,7 @@ tools. For terminal or VS Code development, use **Linux Stack on Kubernetes** in
 
 Both run Xfce with Firefox and passwordless `sudo`. The Ubuntu image also has the CLI tools
 of the headless images (git, Python, uv, kubectl, `gh`). The image can't be changed after the
-workspace is created. CPU, memory, the repo and **Raw sockets** can.
+workspace is created. CPU, memory, the repo, **Raw sockets** and the CLI login can.
 
 ## Using the desktop
 
@@ -102,6 +102,17 @@ dotfiles. An SSH URL uses your Coder SSH key (`coder publickey`).
 Set your name and email in your own git config, ideally in your dotfiles. If you set
 nothing, commits use your Coder name and login email: the template writes those to
 `/etc/gitconfig` as a fallback on every start.
+
+## The coder CLI
+
+The `coder` CLI is installed in the workspace but not logged in. **Log in the coder CLI**
+(`coder_login`, off by default, changeable any time) puts a Coder session token for your
+account in the workspace's environment (`CODER_SESSION_TOKEN`, with `CODER_URL`), so commands
+like `coder list` or `coder ssh <other workspace>` work straight away. The token can do anything
+your account can, and every process in the workspace can read it, AI agents included. A new one
+is made on every start and deleted when the workspace stops. Leave it off unless you use the CLI
+here often. Otherwise run `coder login` when you need it: that token stays in the CLI's config
+instead of the environment.
 
 ## Limits
 
