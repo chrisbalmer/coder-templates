@@ -126,6 +126,17 @@ data "coder_parameter" "herdr_server" {
   order        = 7
 }
 
+data "coder_parameter" "coder_login" {
+  name         = "coder_login"
+  display_name = "Log in the coder CLI"
+  description  = "Puts a Coder session token for your account in the workspace (CODER_SESSION_TOKEN), so the coder CLI inside it is logged in as you. Any process in the workspace, AI agents included, can read the token. Off: run coder login when you need it."
+  type         = "bool"
+  default      = "false"
+  mutable      = true
+  icon         = "/icon/coder.svg"
+  order        = 8
+}
+
 data "coder_parameter" "lab_postgres" {
   name         = "lab_postgres"
   display_name = "Lab: PostgreSQL"

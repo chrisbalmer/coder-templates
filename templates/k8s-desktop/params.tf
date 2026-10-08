@@ -102,6 +102,17 @@ data "coder_parameter" "net_raw" {
   order        = 6
 }
 
+data "coder_parameter" "coder_login" {
+  name         = "coder_login"
+  display_name = "Log in the coder CLI"
+  description  = "Puts a Coder session token for your account in the workspace (CODER_SESSION_TOKEN), so the coder CLI inside it is logged in as you. Any process in the workspace, AI agents included, can read the token. Off: run coder login when you need it."
+  type         = "bool"
+  default      = "false"
+  mutable      = true
+  icon         = "/icon/coder.svg"
+  order        = 7
+}
+
 data "coder_parameter" "storage_class" {
   # Only when the admin offers a choice: storage_class unset and
   # storage_class_options listed.
