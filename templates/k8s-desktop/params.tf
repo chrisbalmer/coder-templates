@@ -5,7 +5,7 @@
 data "coder_parameter" "image" {
   name         = "image"
   display_name = "Desktop"
-  description  = "Which Linux desktop the workspace runs. Both use Xfce, served in the browser by KasmVNC, with passwordless sudo."
+  description  = "Which Linux the workspace runs. Both have an Xfce desktop, served in the browser by KasmVNC, and passwordless sudo."
   type         = "string"
   default      = "ubuntu-desktop"
   mutable      = false
@@ -21,9 +21,20 @@ data "coder_parameter" "image" {
   option {
     name        = "Kali Linux"
     value       = "kali-desktop"
-    description = "Security labs, CTFs and static malware analysis with Kali's tools. Not for general development."
+    description = "Security labs, reverse engineering and static malware analysis with Kali's tools, Ghidra, angr and gdb. Not for general development."
     icon        = "/emojis/1f409.png"
   }
+}
+
+data "coder_parameter" "desktop" {
+  name         = "desktop"
+  display_name = "Desktop"
+  description  = "Run the Xfce desktop and its KasmVNC app. Off: SSH and the terminal only, e.g. Kali's tools driven by an MCP client (ghidra-mcp). For headless Ubuntu work, use Linux Stack on Kubernetes."
+  type         = "bool"
+  default      = "true"
+  mutable      = true
+  icon         = "/icon/desktop.svg"
+  order        = 8
 }
 
 data "coder_parameter" "cpu" {
