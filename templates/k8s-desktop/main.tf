@@ -7,10 +7,12 @@ locals {
   # (github.com/chrisbalmer/coder-images).
   images = {
     ubuntu-desktop = "${var.image_registry}/coder-images-ubuntu-desktop:2.3.1"
-    kali-desktop   = "${var.image_registry}/coder-images-kali-desktop:2.3.0"
+    kali-desktop   = "${var.image_registry}/coder-images-kali-desktop:2.4.0"
   }
 
   start = data.coder_workspace.me.start_count
+  # Headless (desktop off) skips only the KasmVNC app; the image and the pod are the same.
+  desktop = data.coder_parameter.desktop.value
 
   home_path      = "/home/coder"
   repo           = data.coder_parameter.repo.value
@@ -114,9 +116,10 @@ resource "coder_script" "git_identity" {
 # The desktop. The images ship Xfce and KasmVNC; the module configures
 # KasmVNC on localhost and starts it, and Coder proxies it, so there is no VNC
 # password: access is the Coder session. kasm_version only matters for an
-# image without KasmVNC, which the module would install it into.
+# image without KasmVNC, which the module would install it into. Off with the
+# Desktop parameter, for SSH-only use.
 module "kasmvnc" {
-  count               = local.start
+  count               = local.desktop ? local.start : 0
   source              = "registry.coder.com/coder/kasmvnc/coder"
   version             = "1.3.0"
   agent_id            = coder_agent.main.id
