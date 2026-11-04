@@ -4,7 +4,7 @@
 name: k8s-desktop
 display_name: Linux Desktop on Kubernetes
 icon: /icon/desktop.svg
-description: Linux GUI desktop in the browser (KasmVNC). Presets for Ubuntu, and Kali for security labs. Not for headless dev work.
+description: Linux desktop in the browser (KasmVNC), Ubuntu or Kali. Kali also runs headless for security work. Not for dev work.
 # Autostop, as Go durations; CI applies them with coder templates edit
 # (--default-ttl, --activity-bump). Users can still change their own schedule.
 default_ttl: 8h
